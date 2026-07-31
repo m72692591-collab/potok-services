@@ -6,8 +6,7 @@
 <title>ПРАКСЕЛЬТА — новый адрес</title>
 <script>
 (function(){
-  var tail=location.pathname.replace(/^\/potok-services\/?/, "");
-  var target="https://m72692591-collab.github.io/praxelta-services/"+tail+location.search+location.hash;
+  var parts=location.pathname.split("/").filter(Boolean);\n  var tail=parts.slice(1).join("/");\n  if(tail){tail += "/";}\n  var target="https://m72692591-collab.github.io/praxelta-services/"+tail+location.search+location.hash;
   location.replace(target);
 })();
 </script>
