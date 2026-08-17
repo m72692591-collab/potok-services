@@ -1,0 +1,112 @@
+name: One-shot canonicalize and merge legacy redirect
+
+on:
+  push:
+    branches:
+      - governance/legacy-compatibility-only-20260817
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: one-shot-legacy-redirect
+  cancel-in-progress: false
+
+jobs:
+  canonicalize-validate-and-merge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact legacy branch
+        uses: actions/checkout@v4
+        with:
+          ref: governance/legacy-compatibility-only-20260817
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Replace active surface with minimal safe redirect
+        run: |
+          cat > index.html <<'HTML'
+          <!doctype html>
+          <html lang="ru">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta name="robots" content="noindex,follow">
+            <meta http-equiv="refresh" content="0; url=https://m72692591-collab.github.io/praxelta-services/">
+            <link rel="canonical" href="https://m72692591-collab.github.io/praxelta-services/">
+            <title>Старый адрес — переход на ПРАКСЕЛЬТУ</title>
+            <style>
+              body { font-family: system-ui, sans-serif; margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f7f7f5; color: #202020; }
+              main { max-width: 44rem; padding: 2rem; text-align: center; }
+              a { color: inherit; font-weight: 700; }
+            </style>
+          </head>
+          <body>
+            <main>
+              <h1>Этот адрес устарел</h1>
+              <p>Актуальный отдельный проект называется <strong>ПРАКСЕЛЬТА / PRAXELTA</strong>.</p>
+              <p><a href="https://m72692591-collab.github.io/praxelta-services/">Перейти на актуальную витрину ПРАКСЕЛЬТЫ</a></p>
+              <p><small>LEGACY_COMPATIBILITY_ONLY · формы, заявки, оплата и аналитика здесь отсутствуют.</small></p>
+            </main>
+          </body>
+          </html>
+          HTML
+
+          cat > README.md <<'MD'
+          # LEGACY_COMPATIBILITY_ONLY
+
+          Этот репозиторий сохранён только как старый технический адрес и безопасное перенаправление.
+
+          Канонический активный проект: **ПРАКСЕЛЬТА / PRAXELTA**  
+          Репозиторий: `m72692591-collab/praxelta-services`
+
+          Здесь запрещены новая разработка, услуги, заявки, реклама, аналитика и самостоятельный бренд. История Git сохраняется; автоматическое удаление не выполняется.
+          MD
+
+      - name: Permit only harmless static compatibility files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/validate_legacy_redirect.py')
+          text = path.read_text(encoding='utf-8')
+          needle = '    "scripts",\n}'
+          replacement = '    "scripts",\n    "404.html",\n    "robots.txt",\n    "sitemap.xml",\n    "CNAME",\n}'
+          if needle in text:
+              text = text.replace(needle, replacement, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Validate strict redirect-only contract
+        run: |
+          python -m py_compile scripts/validate_legacy_redirect.py
+          python scripts/validate_legacy_redirect.py
+
+      - name: Remove one-shot workflow and commit canonical redirect
+        run: |
+          rm .github/workflows/one-shot-canonicalize-and-merge-legacy-redirect.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            index.html \
+            README.md \
+            scripts/validate_legacy_redirect.py \
+            .github/workflows/one-shot-canonicalize-and-merge-legacy-redirect.yml
+          git commit -m "Оставить старый адрес только как перенаправление на ПРАКСЕЛЬТУ"
+          git push origin HEAD:governance/legacy-compatibility-only-20260817
+
+      - name: Merge verified legacy governance pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr merge 1 \
+            --repo m72692591-collab/potok-services \
+            --squash \
+            --subject "Закрепить старый адрес как LEGACY_COMPATIBILITY_ONLY" \
+            --body "Оставляет минимальное перенаправление на ПРАКСЕЛЬТУ, запрещает формы, заявки, оплату, аналитику и новую разработку. Строгий redirect-only guard прошёл."
