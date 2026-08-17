@@ -1,0 +1,47 @@
+name: Compatibility redirect only
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "ops/compatibility-status-20260817"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Verify compatibility declaration
+        run: test -s ARCHIVED_COMPATIBILITY.md
+
+      - name: Verify redirect to canonical project
+        run: |
+          set -euo pipefail
+          test -s index.html
+          grep -Fq 'praxelta-services' index.html
+          python - <<'PY'
+          from pathlib import Path
+          html = Path('index.html').read_text(encoding='utf-8-sig')
+          assert 'praxelta-services' in html
+          assert 'ПРАКСЕЛЬТА' in html or 'Praxelta' in html or 'praxelta' in html.lower()
+          PY
+
+      - name: Block accidental application code
+        run: |
+          set -euo pipefail
+          for path in app src backend server api database migrations package.json requirements.txt pyproject.toml; do
+            if [ -e "$path" ]; then
+              echo "Compatibility repository must not contain active application code: $path" >&2
+              exit 1
+            fi
+          done
+          git diff --check
