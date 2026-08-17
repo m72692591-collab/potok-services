@@ -1,0 +1,68 @@
+name: Verify legacy redirect only
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/one-shot-verify-legacy-redirect.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify redirect target and repository scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='https://m72692591-collab.github.io/praxelta-services/'
+          if [[ ! -f index.html ]]; then
+            echo 'index.html is missing.' >&2
+            exit 1
+          fi
+          if ! grep -Fq "$target" index.html; then
+            echo "Redirect target is not canonical: $target" >&2
+            exit 1
+          fi
+          if find . -type f \
+              ! -path './.git/*' \
+              ! -path './.github/workflows/one-shot-normalize-legacy-redirect.yml' \
+              ! -path './.github/workflows/one-shot-verify-legacy-redirect.yml' \
+              ! -name 'index.html' \
+              ! -name 'README.md' \
+              ! -name 'LEGACY_REDIRECT_STATUS.md' \
+              ! -name '.nojekyll' \
+              | grep -q .; then
+            echo 'Unexpected active product files exist in the legacy redirect repository:' >&2
+            find . -type f \
+              ! -path './.git/*' \
+              ! -path './.github/workflows/one-shot-normalize-legacy-redirect.yml' \
+              ! -path './.github/workflows/one-shot-verify-legacy-redirect.yml' \
+              ! -name 'index.html' \
+              ! -name 'README.md' \
+              ! -name 'LEGACY_REDIRECT_STATUS.md' \
+              ! -name '.nojekyll' >&2
+            exit 1
+          fi
+      - name: Persist verification and remove one-shot workflow
+        run: |
+          cat > REDIRECT_VERIFICATION.md <<'EOF'
+          # Проверка технического редиректа
+
+          - Активный бренд: **ПРАКСЕЛЬТА**.
+          - Канонический адрес: `https://m72692591-collab.github.io/praxelta-services/`.
+          - Этот репозиторий не содержит отдельного продукта и не развивается как самостоятельное направление.
+          - `index.html` проверен на перенаправление к каноническому адресу.
+          EOF
+          rm .github/workflows/one-shot-verify-legacy-redirect.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add REDIRECT_VERIFICATION.md .github/workflows/one-shot-verify-legacy-redirect.yml
+          git commit -m 'Подтвердить технический редирект на ПРАКСЕЛЬТУ'
+          git push origin HEAD:main
