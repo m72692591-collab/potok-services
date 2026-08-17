@@ -1,0 +1,94 @@
+name: One-shot remove final legacy workflow residue
+
+on:
+  push:
+    branches:
+      - "ops/remove-one-shot-residue-final-20260818"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: one-shot-remove-final-legacy-residue
+  cancel-in-progress: false
+
+jobs:
+  clean-verify-and-merge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact cleanup branch
+        uses: actions/checkout@v4
+        with:
+          ref: ops/remove-one-shot-residue-final-20260818
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Delete only ephemeral one-shot workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          find .github/workflows -maxdepth 1 -type f \
+            \( -name 'one-shot-*.yml' -o -name 'one-shot-*.yaml' \) \
+            -print -delete
+          ! find .github/workflows -maxdepth 1 -type f \
+            \( -name 'one-shot-*.yml' -o -name 'one-shot-*.yaml' \) \
+            | grep -q .
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify strict legacy redirect contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/validate_legacy_redirect.py
+          python scripts/validate_legacy_redirect.py
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+          status = json.loads(Path('legacy_status.json').read_text(encoding='utf-8'))
+          assert status['status'] == 'LEGACY_COMPATIBILITY_ONLY'
+          assert status['redirect_only'] is True
+          assert status['new_development_allowed'] is False
+          assert status['new_marketing_allowed'] is False
+          assert status['lead_collection_allowed'] is False
+          assert status['analytics_allowed'] is False
+          index = Path('index.html').read_text(encoding='utf-8')
+          assert 'ПРАКСЕЛЬТА' in index and 'PRAXELTA' in index
+          for pattern in (r'<form\b', r'fetch\s*\(', r'XMLHttpRequest', r'google-analytics|gtag\s*\(|yaCounter', r'оставить заявку|оплатить|тариф'):
+              assert not re.search(pattern, index, re.IGNORECASE), pattern
+          PY
+          git diff --check
+
+      - name: Commit cleanup without deleting branch history
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Удалить только временные one-shot workflows legacy redirect'
+          git push origin HEAD:ops/remove-one-shot-residue-final-20260818
+
+      - name: Open and merge verified cleanup PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          number="$(gh pr list --repo m72692591-collab/potok-services --state open --head ops/remove-one-shot-residue-final-20260818 --json number --jq '.[0].number // empty')"
+          if [ -z "$number" ]; then
+            url="$(gh pr create \
+              --repo m72692591-collab/potok-services \
+              --base main \
+              --head ops/remove-one-shot-residue-final-20260818 \
+              --title 'Удалить финальный остаток временных one-shot workflows legacy redirect' \
+              --body 'Удаляются только временные migration helpers. Redirect, strict guard, policy, ветки и Git-история сохраняются; новая продуктовая функциональность не создаётся.')"
+            number="${url##*/}"
+          fi
+          gh pr merge "$number" \
+            --repo m72692591-collab/potok-services \
+            --squash \
+            --subject 'Удалить финальный остаток временных one-shot workflows legacy redirect' \
+            --body 'Удалены только временные helpers; strict legacy redirect guard прошёл. Ветки и история сохранены.'
