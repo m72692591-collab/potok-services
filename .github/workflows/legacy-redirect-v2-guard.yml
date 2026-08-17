@@ -1,0 +1,55 @@
+name: Legacy redirect v2 guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: "23 4 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legacy-redirect-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile and test
+        run: |
+          python -m py_compile \
+            scripts/validate_legacy_redirect_v2.py \
+            tests/test_validate_legacy_redirect_v2.py
+          python -m pytest tests/test_validate_legacy_redirect_v2.py -q
+
+      - name: Validate repository shape and redirect contract
+        run: |
+          mkdir -p legacy-redirect-v2-report
+          python scripts/validate_legacy_redirect_v2.py \
+            --root . \
+            --report legacy-redirect-v2-report/report.json
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-redirect-v2-${{ github.run_number }}
+          path: legacy-redirect-v2-report
+          if-no-files-found: error
+          retention-days: 30
