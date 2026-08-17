@@ -1,0 +1,171 @@
+name: One-shot apply and merge legacy redirect v2
+
+on:
+  push:
+    branches:
+      - governance/legacy-redirect-v2-20260818
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: one-shot-legacy-redirect-v2
+  cancel-in-progress: false
+
+jobs:
+  canonicalize-verify-and-merge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: governance/legacy-redirect-v2-20260818
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Replace active surface with minimal static redirect
+        run: |
+          cat > index.html <<'HTML'
+          <!doctype html>
+          <html lang="ru">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta name="robots" content="noindex,follow">
+            <meta http-equiv="refresh" content="0; url=https://m72692591-collab.github.io/praxelta-services/">
+            <link rel="canonical" href="https://m72692591-collab.github.io/praxelta-services/">
+            <title>ПРАКСЕЛЬТА / PRAXELTA · LEGACY_COMPATIBILITY_REDIRECT_ONLY</title>
+            <style>
+              body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f5f6f7; color: #1f2933; font-family: system-ui, sans-serif; }
+              main { max-width: 46rem; padding: 2rem; text-align: center; }
+              a { color: inherit; font-weight: 700; }
+            </style>
+          </head>
+          <body>
+            <main>
+              <h1>Этот технический адрес устарел</h1>
+              <p>Действующий отдельный проект: <strong>ПРАКСЕЛЬТА / PRAXELTA</strong>.</p>
+              <p><a href="https://m72692591-collab.github.io/praxelta-services/">Перейти на актуальную витрину ПРАКСЕЛЬТЫ</a></p>
+              <p><small>LEGACY_COMPATIBILITY_REDIRECT_ONLY · форм, заявок, оплаты и аналитики здесь нет.</small></p>
+            </main>
+          </body>
+          </html>
+          HTML
+
+          cat > README.md <<'MD'
+          # LEGACY_COMPATIBILITY_REDIRECT_ONLY
+
+          Этот репозиторий сохранён только как старый технический адрес и безопасное перенаправление.
+
+          Действующий проект: **ПРАКСЕЛЬТА / PRAXELTA**  
+          Репозиторий-преемник: `m72692591-collab/praxelta-services`
+
+          Здесь запрещены новая разработка, маркетинг, заявки, оплата, аналитика и самостоятельная бизнес-модель. Git-история сохраняется; автоматическое удаление не выполняется.
+          MD
+
+          cat > DEPRECATED_COMPATIBILITY_ONLY.md <<'MD'
+          # LEGACY_COMPATIBILITY_REDIRECT_ONLY
+
+          Старый адрес сохранён только для совместимости ссылок.
+
+          Канонический преемник: **ПРАКСЕЛЬТА / PRAXELTA** — `m72692591-collab/praxelta-services`.
+
+          Разрешены только исправления перенаправления, безопасности и доступности. Новые продукты, тарифы, формы, сбор данных, реклама и аналитика запрещены.
+          MD
+
+      - name: Compile, test and validate strict contract
+        run: |
+          python -m py_compile \
+            scripts/validate_legacy_redirect_v2.py \
+            tests/test_validate_legacy_redirect_v2.py
+          python -m pytest tests/test_validate_legacy_redirect_v2.py -q
+          mkdir -p operations/legacy
+          python scripts/validate_legacy_redirect_v2.py \
+            --root . \
+            --report operations/legacy/LEGACY_REDIRECT_V2_REPORT.json
+          git diff --check
+
+      - name: Attempt metadata update and retain exact evidence
+        id: metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set +e
+          gh api \
+            --method PATCH \
+            repos/m72692591-collab/potok-services \
+            -f description='Устаревший технический адрес — перенаправление на ПРАКСЕЛЬТУ' \
+            > /tmp/metadata-update.json 2> /tmp/metadata-error.txt
+          update_code=$?
+          set -e
+          current="$(gh api repos/m72692591-collab/potok-services --jq '.description // ""')"
+          printf '%s\n' "$current" > operations/legacy/GITHUB_DESCRIPTION_AFTER.txt
+          if [ "$current" = 'Устаревший технический адрес — перенаправление на ПРАКСЕЛЬТУ' ]; then
+            echo 'verified=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'verified=false' >> "$GITHUB_OUTPUT"
+          fi
+          echo "update_code=$update_code" >> "$GITHUB_OUTPUT"
+
+      - name: Preserve metadata blocker when exact read-back fails
+        if: steps.metadata.outputs.verified != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          title='[P0 METADATA] Пометить старый адрес как перенаправление на ПРАКСЕЛЬТУ'
+          number="$(gh issue list \
+            --repo m72692591-collab/potok-services \
+            --state open \
+            --search "$title in:title" \
+            --json number,title \
+            --jq '.[] | select(.title == "'"$title"'") | .number' \
+            | head -n 1)"
+          current="$(cat operations/legacy/GITHUB_DESCRIPTION_AFTER.txt)"
+          body="Требуемое точное GitHub description: \`Устаревший технический адрес — перенаправление на ПРАКСЕЛЬТУ\`. Текущее API-значение: \`${current}\`. Закрывать только после повторного API-read-back. Файлы redirect-only проверены отдельно."
+          if [ -z "$number" ]; then
+            gh issue create \
+              --repo m72692591-collab/potok-services \
+              --title "$title" \
+              --body "$body"
+          else
+            gh issue edit "$number" \
+              --repo m72692591-collab/potok-services \
+              --body "$body"
+          fi
+
+      - name: Remove one-shot workflow and commit verified redirect
+        run: |
+          rm .github/workflows/one-shot-apply-and-merge-legacy-redirect-v2.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Оставить старый адрес только как перенаправление на ПРАКСЕЛЬТУ'
+          git push origin HEAD:governance/legacy-redirect-v2-20260818
+
+      - name: Open and merge verified redirect PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          pr_url="$(gh pr create \
+            --repo m72692591-collab/potok-services \
+            --base main \
+            --head governance/legacy-redirect-v2-20260818 \
+            --title 'Оставить старый репозиторий только как redirect на ПРАКСЕЛЬТУ' \
+            --body 'Минимальная noindex-страница, статический redirect, ноль форм/оплаты/аналитики, машиночитаемый контракт, tests/CI и metadata read-back gate. Архивирование не выполняется без отдельного решения владельца.')"
+          pr_number="${pr_url##*/}"
+          gh pr merge "$pr_number" \
+            --repo m72692591-collab/potok-services \
+            --squash \
+            --subject 'Оставить старый репозиторий только как redirect на ПРАКСЕЛЬТУ' \
+            --body 'LEGACY_COMPATIBILITY_REDIRECT_ONLY, строгий guard, noindex и отсутствие активной бизнес-функциональности.'
