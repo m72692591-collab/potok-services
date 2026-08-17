@@ -1,0 +1,37 @@
+{
+  "schema_version": 2,
+  "status": "LEGACY_COMPATIBILITY_REDIRECT_ONLY",
+  "active_brand": false,
+  "active_marketing": false,
+  "new_development": false,
+  "lead_collection": false,
+  "payment_collection": false,
+  "analytics": false,
+  "canonical_successor": {
+    "repository": "m72692591-collab/praxelta-services",
+    "brand_ru": "ПРАКСЕЛЬТА",
+    "brand_latin": "PRAXELTA",
+    "public_url": "https://m72692591-collab.github.io/praxelta-services/"
+  },
+  "allowed_changes": [
+    "security_fix",
+    "accessibility_fix",
+    "redirect_fix",
+    "deprecated_notice_fix"
+  ],
+  "forbidden_changes": [
+    "new_product",
+    "new_tariff",
+    "new_marketing_campaign",
+    "lead_form",
+    "payment_form",
+    "tracking_or_analytics",
+    "separate_business_model"
+  ],
+  "archive_gate": {
+    "automatic_archive_allowed": false,
+    "redirect_verified_required": true,
+    "external_link_inventory_required": true,
+    "owner_decision_required": true
+  }
+}
