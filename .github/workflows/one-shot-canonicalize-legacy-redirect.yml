@@ -1,0 +1,174 @@
+name: One-shot canonicalize legacy redirect
+
+on:
+  push:
+    branches:
+      - "fix/legacy-redirect-only-20260818"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: one-shot-canonicalize-legacy-redirect
+  cancel-in-progress: false
+
+jobs:
+  canonicalize-verify-and-merge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact legacy branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/legacy-redirect-only-20260818
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Write minimal no-data redirect surfaces
+        run: |
+          cat > index.html <<'HTML'
+          <!doctype html>
+          <html lang="ru">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta name="robots" content="noindex,nofollow,noarchive">
+            <meta http-equiv="refresh" content="0; url=https://m72692591-collab.github.io/praxelta-services/">
+            <link rel="canonical" href="https://m72692591-collab.github.io/praxelta-services/">
+            <title>Устаревший адрес — ПРАКСЕЛЬТА</title>
+            <style>
+              body{font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f5f2;color:#202020}
+              main{max-width:44rem;padding:2rem;text-align:center}a{color:inherit;font-weight:700}
+            </style>
+          </head>
+          <body>
+            <main>
+              <h1>Этот адрес устарел</h1>
+              <p>Действующий отдельный проект называется <strong>ПРАКСЕЛЬТА / PRAXELTA</strong>.</p>
+              <p><a href="https://m72692591-collab.github.io/praxelta-services/">Перейти на актуальную витрину ПРАКСЕЛЬТЫ</a></p>
+              <p><small>LEGACY_COMPATIBILITY_ONLY · формы, заявки, оплата и аналитика здесь отсутствуют.</small></p>
+            </main>
+          </body>
+          </html>
+          HTML
+          cp index.html 404.html
+          cat > robots.txt <<'TXT'
+          User-agent: *
+          Disallow: /
+          TXT
+          cat > README.md <<'MD'
+          # LEGACY_COMPATIBILITY_ONLY
+
+          Этот репозиторий сохранён только как устаревший технический адрес и безопасное перенаправление.
+
+          Действующий отдельный проект: **ПРАКСЕЛЬТА / PRAXELTA**  
+          Репозиторий: `m72692591-collab/praxelta-services`
+
+          Здесь запрещены новая разработка, самостоятельные услуги, тарифы, заявки, реклама, аналитика и отдельная база пользователей. История Git и старые файлы сохраняются; автоматическое удаление не выполняется.
+          MD
+          cat > legacy_status.json <<'JSON'
+          {
+            "schema_version": 1,
+            "status": "LEGACY_COMPATIBILITY_ONLY",
+            "active_brand": false,
+            "redirect_only": true,
+            "canonical_destination": {
+              "brand_ru": "ПРАКСЕЛЬТА",
+              "brand_latin": "PRAXELTA",
+              "repository": "m72692591-collab/praxelta-services",
+              "url": "https://m72692591-collab.github.io/praxelta-services/"
+            },
+            "new_development_allowed": false,
+            "new_marketing_allowed": false,
+            "lead_collection_allowed": false,
+            "payments_allowed": false,
+            "analytics_allowed": false,
+            "automatic_archive_allowed": false,
+            "history_deleted": false
+          }
+          JSON
+
+      - name: Verify redirect-only contract
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          index = Path('index.html').read_text(encoding='utf-8')
+          page404 = Path('404.html').read_text(encoding='utf-8')
+          robots = Path('robots.txt').read_text(encoding='utf-8')
+          status = json.loads(Path('legacy_status.json').read_text(encoding='utf-8'))
+
+          destination = 'https://m72692591-collab.github.io/praxelta-services/'
+          assert destination in index and destination in page404
+          assert 'ПРАКСЕЛЬТА' in index and 'PRAXELTA' in index
+          assert 'LEGACY_COMPATIBILITY_ONLY' in index
+          assert 'Disallow: /' in robots
+
+          forbidden = re.compile(
+              r'(?is)<form\b|fetch\s*\(|XMLHttpRequest|navigator\.sendBeacon|'
+              r'google-analytics|gtag\s*\(|yaCounter|metrika|payment|checkout|'
+              r'оставить\s+заявку|заказать|тариф',
+          )
+          assert not forbidden.search(index)
+          assert not forbidden.search(page404)
+
+          expected_false = (
+              'active_brand', 'new_development_allowed', 'new_marketing_allowed',
+              'lead_collection_allowed', 'payments_allowed', 'analytics_allowed',
+              'automatic_archive_allowed', 'history_deleted',
+          )
+          assert status['status'] == 'LEGACY_COMPATIBILITY_ONLY'
+          assert status['redirect_only'] is True
+          for key in expected_false:
+              assert status[key] is False, key
+          PY
+          git diff --check
+
+      - name: Preserve historical files without making them active
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          protected = {'.git', '.github', 'index.html', '404.html', 'robots.txt', 'README.md', 'legacy_status.json', 'DEPRECATED_COMPATIBILITY_ONLY.md'}
+          historical = sorted(path.name for path in Path('.').iterdir() if path.name not in protected)
+          Path('HISTORICAL_CONTENT_NOTICE.md').write_text(
+              '# Исторические файлы\n\n'
+              'Файлы, оставшиеся в истории или рабочем дереве, не считаются активной витриной. '
+              'Их не удаляют автоматически; перед любым архивированием требуется отдельный доказательный аудит.\n\n'
+              + ('Обнаруженные верхнеуровневые элементы:\n\n' + ''.join(f'- `{name}`\n' for name in historical) if historical else 'Дополнительных верхнеуровневых элементов не обнаружено.\n'),
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Remove one-shot workflow and commit verified redirect
+        run: |
+          rm .github/workflows/one-shot-canonicalize-legacy-redirect.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Оставить старый адрес только как redirect на ПРАКСЕЛЬТУ'
+          git push origin HEAD:fix/legacy-redirect-only-20260818
+
+      - name: Open and merge exact redirect PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pr="$(gh pr list --repo m72692591-collab/potok-services --state open --head fix/legacy-redirect-only-20260818 --json number --jq '.[0].number // empty')"
+          if [ -z "$pr" ]; then
+            url="$(gh pr create \
+              --repo m72692591-collab/potok-services \
+              --base main \
+              --head fix/legacy-redirect-only-20260818 \
+              --title 'Оставить старый адрес только как redirect на ПРАКСЕЛЬТУ' \
+              --body 'Главная и 404 перенаправляют на ПРАКСЕЛЬТУ; формы, заявки, платежи и аналитика отсутствуют. Исторические файлы не удалены, автоматическое архивирование выключено.')"
+            pr="${url##*/}"
+          fi
+          test "$(gh pr view "$pr" --repo m72692591-collab/potok-services --json headRefName --jq .headRefName)" = fix/legacy-redirect-only-20260818
+          gh pr merge "$pr" \
+            --repo m72692591-collab/potok-services \
+            --squash \
+            --subject 'Оставить старый адрес только как redirect на ПРАКСЕЛЬТУ' \
+            --body 'Redirect-only contract проверен; данные не собираются, история и файлы не удалены.'
