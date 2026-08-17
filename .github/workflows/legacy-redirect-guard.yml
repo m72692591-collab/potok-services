@@ -1,0 +1,32 @@
+name: Legacy redirect guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - governance/legacy-compatibility-only-20260817
+  workflow_dispatch:
+  schedule:
+    - cron: "29 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate redirect-only contract
+        run: |
+          python -m py_compile scripts/validate_legacy_redirect.py
+          python scripts/validate_legacy_redirect.py

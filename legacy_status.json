@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "status": "LEGACY_COMPATIBILITY_ONLY",
+  "active_brand": false,
+  "redirect_only": true,
+  "canonical_destination": {
+    "brand_ru": "ПРАКСЕЛЬТА",
+    "brand_latin": "PRAXELTA",
+    "repository": "m72692591-collab/praxelta-services"
+  },
+  "new_development_allowed": false,
+  "new_marketing_allowed": false,
+  "lead_collection_allowed": false,
+  "analytics_allowed": false,
+  "archive_after_redirect_verification": true,
+  "owner_decision_date": "2026-08-17"
+}
