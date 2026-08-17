@@ -1,0 +1,100 @@
+name: One-shot legacy redirect v2
+
+on:
+  push:
+    branches:
+      - governance/legacy-redirect-v2-20260818
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: one-shot-legacy-redirect-v2
+  cancel-in-progress: false
+
+jobs:
+  canonicalize-and-merge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: governance/legacy-redirect-v2-20260818
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Replace active surface with minimal redirect-only page
+        run: |
+          cat > index.html <<'HTML'
+          <!doctype html>
+          <html lang="ru">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <meta name="robots" content="noindex,follow">
+            <meta http-equiv="refresh" content="0;url=https://m72692591-collab.github.io/praxelta-services/">
+            <link rel="canonical" href="https://m72692591-collab.github.io/praxelta-services/">
+            <title>Устаревший адрес — ПРАКСЕЛЬТА</title>
+            <style>body{font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f7f5;color:#202020}main{max-width:44rem;padding:2rem;text-align:center}a{color:inherit;font-weight:700}</style>
+          </head>
+          <body><main><h1>Этот адрес устарел</h1><p>Действующий отдельный проект: <strong>ПРАКСЕЛЬТА / PRAXELTA</strong>.</p><p><a href="https://m72692591-collab.github.io/praxelta-services/">Перейти на актуальную витрину ПРАКСЕЛЬТЫ</a></p><p><small>LEGACY_COMPATIBILITY_ONLY · форм, заявок, оплаты и аналитики здесь нет.</small></p></main></body>
+          </html>
+          HTML
+          cat > README.md <<'MD'
+          # LEGACY_COMPATIBILITY_ONLY
+
+          Этот репозиторий сохранён только как старый технический адрес и безопасное перенаправление.
+
+          Действующий проект: **ПРАКСЕЛЬТА / PRAXELTA**  
+          Канонический репозиторий: `m72692591-collab/praxelta-services`
+
+          Здесь запрещены новая разработка, услуги, тарифы, заявки, реклама, аналитика и самостоятельный бренд. Git-история сохраняется; автоматическое удаление не выполняется.
+          MD
+          cat > legacy_status.json <<'JSON'
+          {
+            "schema_version": 2,
+            "status": "LEGACY_COMPATIBILITY_ONLY",
+            "active_brand": false,
+            "redirect_only": true,
+            "canonical_destination": "m72692591-collab/praxelta-services",
+            "canonical_brand": "ПРАКСЕЛЬТА / PRAXELTA",
+            "new_development_allowed": false,
+            "new_marketing_allowed": false,
+            "lead_collection_allowed": false,
+            "analytics_allowed": false,
+            "archive_requires_separate_verified_decision": true
+          }
+          JSON
+
+      - name: Validate redirect-only contract
+        run: |
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          index=Path('index.html').read_text(encoding='utf-8')
+          data=json.loads(Path('legacy_status.json').read_text(encoding='utf-8'))
+          assert data['status']=='LEGACY_COMPATIBILITY_ONLY'
+          for key in ('active_brand','new_development_allowed','new_marketing_allowed','lead_collection_allowed','analytics_allowed'): assert data[key] is False
+          assert data['redirect_only'] is True
+          assert 'ПРАКСЕЛЬТА' in index and 'praxelta-services' in index
+          for pattern in (r'<form\b',r'fetch\s*\(',r'XMLHttpRequest',r'gtag\s*\(',r'google-analytics',r'оплат',r'оставить заявку',r'тариф'):
+              assert not re.search(pattern,index,re.I),pattern
+          PY
+          git diff --check
+
+      - name: Remove one-shot workflow and commit verified redirect
+        run: |
+          rm .github/workflows/one-shot-legacy-redirect-v2.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'Оставить старый адрес только перенаправлением на ПРАКСЕЛЬТУ'
+          git push origin HEAD:governance/legacy-redirect-v2-20260818
+
+      - name: Open and merge verified redirect PR
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          url="$(gh pr create --repo m72692591-collab/potok-services --base main --head governance/legacy-redirect-v2-20260818 --title 'Оставить старый адрес только redirect на ПРАКСЕЛЬТУ' --body 'Минимальная noindex redirect-only страница: без форм, заявок, оплаты, аналитики и новой разработки. История не удаляется; архивирование остаётся отдельным проверяемым решением.')"
+          pr="${url##*/}"
+          gh pr merge "$pr" --repo m72692591-collab/potok-services --squash --subject 'Оставить старый адрес только redirect на ПРАКСЕЛЬТУ' --body 'Redirect-only контракт и отсутствие форм/оплаты/аналитики проверены.'
