@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "status": "PUBLIC_QWEN_WORKER_READY",
-  "checked_at_utc": "2026-08-19T16:13:45.068370+00:00",
+  "checked_at_utc": "2026-08-19T16:16:35.500501+00:00",
   "model": "qwen2.5-coder:1.5b",
   "processed": [
-    "public-day08-family-support-outline-20260819"
+    "public-praxelta-warm-intro-experiment-20260819"
   ],
   "done": 1,
   "failed": 0,

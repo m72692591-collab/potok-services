@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "task_id": "public-praxelta-warm-intro-experiment-20260819",
+  "status": "DONE",
+  "finished_at_utc": "2026-08-19T16:16:35.499777+00:00",
+  "provider_type": "ollama",
+  "model": "qwen2.5-coder:1.5b",
+  "budget_rub": 0,
+  "external_side_effects": "deny",
+  "answer_sha256": "a84de6e3087299c7c3f0904a86befb5c6151173c1352bb03e4e585878bbbc61d",
+  "applied": null,
+  "boundary": "Public-safe text/file work only. No accounts, publication or payments."
+}
