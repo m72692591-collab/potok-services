@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "task_id": "public-worker-proof-20260819",
+  "status": "READY",
+  "public_context_only": true,
+  "action": "write_files",
+  "budget_rub": 0,
+  "provider_policy": "free_only",
+  "external_side_effects": "deny",
+  "prompt": "Return only one valid JSON object with summary and a non-empty files array. Create exactly one file named PUBLIC_WORKER_PROOF.md. Its complete content must be: # Public-safe free worker\n\nPUBLIC_QWEN_WORKER_OK\n\nThis proof covers public-safe bounded file generation only. It does not prove access to private repositories, browser accounts, publication, payments, OTP or CAPTCHA. Do not create another file and do not wrap JSON in Markdown."
+}
