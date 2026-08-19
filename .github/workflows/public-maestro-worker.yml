@@ -19,7 +19,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          show-progress: false
+      - name: Publish immutable run-start evidence
+        run: |
+          mkdir -p automation/health
+          printf '{\n  "status": "PUBLIC_QWEN_WORKER_RUN_STARTED",\n  "checked_at_utc": "%s",\n  "run_id": "%s",\n  "head_sha": "%s",\n  "model": "qwen2.5-coder:0.5b",\n  "budget_rub": 0\n}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$GITHUB_RUN_ID" "$GITHUB_SHA" > automation/health/PUBLIC_QWEN_WORKER_STARTED.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add automation/health/PUBLIC_QWEN_WORKER_STARTED.json
+          git commit -m 'Publish public Qwen worker start evidence'
+          git pull --rebase origin main
+          git push origin HEAD:main
+
   process:
+    needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -27,9 +48,10 @@ jobs:
       OLLAMA_HOST: 127.0.0.1:11434
       OLLAMA_NO_CLOUD: 'true'
     steps:
-      - name: Checkout
+      - name: Checkout latest queue
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           show-progress: false
 
@@ -53,21 +75,28 @@ jobs:
           ollama pull "$PUBLIC_QWEN_MODEL"
 
       - name: Process public-safe queue
+        id: worker
+        continue-on-error: true
         run: python automation/public_worker.py
 
-      - name: Commit receipts and results
+      - name: Persist terminal worker state
         if: always()
+        env:
+          WORKER_OUTCOME: ${{ steps.worker.outcome }}
         run: |
+          mkdir -p automation/health
+          if [ ! -f automation/health/PUBLIC_QWEN_WORKER_STATE.json ]; then
+            printf '{\n  "schema": 1,\n  "status": "PUBLIC_QWEN_WORKER_FAILED_BEFORE_RESULT",\n  "checked_at_utc": "%s",\n  "run_id": "%s",\n  "model": "%s",\n  "step_outcome": "%s",\n  "budget_rub": 0\n}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$GITHUB_RUN_ID" "$PUBLIC_QWEN_MODEL" "$WORKER_OUTCOME" > automation/health/PUBLIC_QWEN_WORKER_STATE.json
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add queue/receipts queue/results public-output automation/health/PUBLIC_QWEN_WORKER_STATE.json || true
-          if git diff --cached --quiet; then
-            echo 'No queue result changes.'
-            exit 0
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish public-safe MAESTRO results'
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
-          git commit -m 'Publish public-safe MAESTRO results'
-          git pull --rebase origin main
-          git push origin HEAD:main
+          if [ "$WORKER_OUTCOME" != "success" ]; then exit 1; fi
 
       - name: Upload diagnostics
         if: always()
