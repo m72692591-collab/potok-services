@@ -5,8 +5,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
-import sys
 import tempfile
 import urllib.error
 import urllib.request
@@ -123,7 +121,7 @@ def call_ollama(task: dict[str, Any]) -> str:
         "Never request or expose secrets, private repository content or personal data. "
         + format_instruction
     )
-    payload = {
+    payload: dict[str, Any] = {
         "model": MODEL,
         "stream": False,
         "messages": [
@@ -204,7 +202,9 @@ def apply_write_files(task_id: str, response: str) -> dict[str, Any]:
 
 def pending_cards() -> list[Path]:
     INBOX.mkdir(parents=True, exist_ok=True)
+    RECEIPTS.mkdir(parents=True, exist_ok=True)
     RESULTS.mkdir(parents=True, exist_ok=True)
+    PUBLIC_OUTPUT.mkdir(parents=True, exist_ok=True)
     return [
         path
         for path in sorted(INBOX.glob("*.json"))
@@ -212,9 +212,42 @@ def pending_cards() -> list[Path]:
     ]
 
 
+def rejected_result(task_id: str, message: str) -> dict[str, Any]:
+    receipt = {
+        "schema": 1,
+        "task_id": task_id,
+        "status": "REJECTED",
+        "imported_at_utc": now(),
+        "model": MODEL,
+        "budget_rub": 0,
+        "external_side_effects": "deny",
+        "reason": message,
+    }
+    write_json_atomic(RECEIPTS / f"{task_id}.json", receipt)
+    result = {
+        "schema": 1,
+        "task_id": task_id,
+        "status": "REJECTED",
+        "finished_at_utc": now(),
+        "provider_type": "policy",
+        "model": None,
+        "budget_rub": 0,
+        "external_side_effects": "deny",
+        "error": message,
+        "boundary": "Rejected before model execution; no external side effect and no output file.",
+    }
+    write_json_atomic(RESULTS / f"{task_id}.json", result)
+    return result
+
+
 def process(path: Path) -> dict[str, Any]:
-    task = load_json(path)
-    task_id = validate_task(task)
+    fallback_id = safe_id(path.stem)
+    try:
+        task = load_json(path)
+        task_id = validate_task(task)
+    except Exception as exc:
+        return rejected_result(fallback_id, str(exc))
+
     receipt = {
         "schema": 1,
         "task_id": task_id,
@@ -246,7 +279,7 @@ def process(path: Path) -> dict[str, Any]:
             "external_side_effects": "deny",
             "answer_sha256": sha256_text(answer) if answer else None,
             "applied": result_value,
-            "boundary": "Public-safe text/file work only. No private repository, accounts, publication, payments, OTP or CAPTCHA.",
+            "boundary": "Public-safe text/file work only. No accounts, publication or payments.",
         }
     except Exception as exc:
         result = {
@@ -271,21 +304,29 @@ def main() -> int:
         results.append(process(path))
 
     remaining = len(pending_cards())
+    failed = sum(item["status"] == "FAILED" for item in results)
+    rejected = sum(item["status"] == "REJECTED" for item in results)
+    done = sum(item["status"] == "DONE" for item in results)
     state = {
         "schema": 1,
-        "status": "PUBLIC_QWEN_WORKER_READY" if remaining == 0 else "PUBLIC_QWEN_WORKER_PENDING",
+        "status": (
+            "PUBLIC_QWEN_WORKER_READY"
+            if remaining == 0 and failed == 0
+            else "PUBLIC_QWEN_WORKER_DEGRADED"
+        ),
         "checked_at_utc": now(),
         "model": MODEL,
         "processed": [item["task_id"] for item in results],
-        "done": sum(item["status"] == "DONE" for item in results),
-        "failed": sum(item["status"] == "FAILED" for item in results),
+        "done": done,
+        "failed": failed,
+        "rejected": rejected,
         "pending_count": remaining,
         "budget_rub": 0,
         "public_context_only": True,
     }
     write_json_atomic(STATE, state)
     print(json.dumps(state, ensure_ascii=False, indent=2))
-    return 0 if all(item["status"] == "DONE" for item in results) else 1
+    return 0 if remaining == 0 and failed == 0 else 1
 
 
 if __name__ == "__main__":
