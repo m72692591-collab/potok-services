@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "task_id": "public-worker-proof-v7-20260819",
+  "status": "READY",
+  "public_context_only": true,
+  "action": "write_files",
+  "budget_rub": 0,
+  "provider_policy": "free_only",
+  "external_side_effects": "deny",
+  "expected_files": [
+    {
+      "path": "PUBLIC_WORKER_PROOF.md",
+      "content_sha256": "3c7d14696ae0d062fe422c585e96979586948914597640c023f3bba1ba16da46"
+    }
+  ],
+  "prompt": "Return one JSON object. The files array must contain exactly one object. Its path must be exactly PUBLIC_WORKER_PROOF.md. Its content must be exactly '# Public-safe free worker\n\nPUBLIC_QWEN_WORKER_OK\n\nZero-cost public-context file execution was completed.' with no final newline. Do not use any other path or text."
+}
