@@ -1,0 +1,83 @@
+name: Public-safe MAESTRO Qwen worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'queue/inbox/**'
+      - 'automation/public_worker.py'
+      - '.github/workflows/public-maestro-worker.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '37 */6 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-safe-maestro-worker
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PUBLIC_QWEN_MODEL: qwen2.5-coder:0.5b
+      OLLAMA_HOST: 127.0.0.1:11434
+      OLLAMA_NO_CLOUD: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Cache free Qwen model
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: potok-public-worker-qwen25coder-05b-v1
+
+      - name: Install official Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama and load free model
+        run: |
+          nohup ollama serve > /tmp/public-ollama.out.log 2> /tmp/public-ollama.err.log &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull "$PUBLIC_QWEN_MODEL"
+
+      - name: Process public-safe queue
+        run: python automation/public_worker.py
+
+      - name: Commit receipts and results
+        if: always()
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add queue/receipts queue/results public-output automation/health/PUBLIC_QWEN_WORKER_STATE.json || true
+          if git diff --cached --quiet; then
+            echo 'No queue result changes.'
+            exit 0
+          fi
+          git commit -m 'Publish public-safe MAESTRO results'
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-maestro-diagnostics
+          path: |
+            /tmp/public-ollama.out.log
+            /tmp/public-ollama.err.log
+            automation/health/PUBLIC_QWEN_WORKER_STATE.json
+            queue/results/**
+          if-no-files-found: warn
+          retention-days: 14
