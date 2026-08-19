@@ -1,12 +1,10 @@
 {
   "schema": 1,
   "status": "PUBLIC_QWEN_WORKER_READY",
-  "checked_at_utc": "2026-08-19T15:54:15.884137+00:00",
+  "checked_at_utc": "2026-08-19T15:57:38.465754+00:00",
   "model": "qwen2.5-coder:0.5b",
-  "processed": [
-    "public-worker-proof-v3-20260819"
-  ],
-  "done": 1,
+  "processed": [],
+  "done": 0,
   "failed": 0,
   "rejected": 0,
   "pending_count": 0,
