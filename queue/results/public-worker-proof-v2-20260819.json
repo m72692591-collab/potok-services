@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "task_id": "public-worker-proof-v2-20260819",
+  "status": "FAILED",
+  "finished_at_utc": "2026-08-19T15:48:53.910222+00:00",
+  "provider_type": "ollama",
+  "model": "qwen2.5-coder:0.5b",
+  "budget_rub": 0,
+  "external_side_effects": "deny",
+  "error": "file item must be object"
+}
