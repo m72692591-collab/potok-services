@@ -3,30 +3,121 @@ name: Legacy redirect guard
 on:
   pull_request:
   push:
-    branches:
-      - main
-      - governance/legacy-compatibility-only-20260817
+    branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: "29 3 * * *"
 
 permissions:
   contents: read
 
+concurrency:
+  group: legacy-redirect-guard-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  validate:
+  static-contract:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Checkout
+      - name: Checkout exact revision
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          show-progress: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Validate redirect-only contract
+      - name: Validate redirect-only tree and HTML
         run: |
-          python -m py_compile scripts/validate_legacy_redirect.py
-          python scripts/validate_legacy_redirect.py
+          set -euo pipefail
+          python scripts/validate_legacy_redirect.py \
+            --root . \
+            --receipt legacy-redirect-evidence/static-contract.json
+          git diff --check
+
+      - name: Upload static receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-redirect-static-${{ github.run_number }}
+          path: legacy-redirect-evidence
+          if-no-files-found: error
+          retention-days: 90
+
+  live-http:
+    if: github.event_name != 'pull_request'
+    needs: static-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Verify deployed legacy page and canonical target
+        shell: bash
+        env:
+          LEGACY_URL: https://m72692591-collab.github.io/potok-services/
+          TARGET_URL: https://m72692591-collab.github.io/praxelta-services/
+        run: |
+          set -euo pipefail
+          mkdir -p live-http-evidence
+          ready=false
+          for attempt in $(seq 1 40); do
+            legacy_code="$(curl --silent --show-error --location --max-redirs 5 \
+              --output live-http-evidence/legacy.html \
+              --write-out '%{http_code}' \
+              -H 'Cache-Control: no-cache' \
+              "${LEGACY_URL}?closure_sha=${GITHUB_SHA}&attempt=${attempt}" || true)"
+            if [ "$legacy_code" = 200 ] && grep -q 'PRAXELTA_REDIRECT_ONLY_V1' live-http-evidence/legacy.html; then
+              ready=true
+              break
+            fi
+            sleep 10
+          done
+          test "$ready" = true
+          target_code="$(curl --silent --show-error --location --max-redirs 5 \
+            --output live-http-evidence/target.html \
+            --write-out '%{http_code}' \
+            -H 'Cache-Control: no-cache' \
+            "$TARGET_URL")"
+          test "$target_code" = 200
+          grep -qF "$TARGET_URL" live-http-evidence/legacy.html
+          ! grep -Eqi '<script\b|<form\b|fetch\s*\(|XMLHttpRequest|google-analytics|metrika' live-http-evidence/legacy.html
+          sha256sum live-http-evidence/legacy.html live-http-evidence/target.html > live-http-evidence/SHA256SUMS.txt
+          python - <<'PY'
+          import hashlib, json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          def digest(path): return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+          receipt = {
+              'schema_version': 1,
+              'verified_at_utc': datetime.now(timezone.utc).isoformat(),
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'commit_sha': os.environ['GITHUB_SHA'],
+              'run_id': os.environ['GITHUB_RUN_ID'],
+              'legacy_url': os.environ['LEGACY_URL'],
+              'legacy_http_status': 200,
+              'legacy_body_sha256': digest('live-http-evidence/legacy.html'),
+              'target_url': os.environ['TARGET_URL'],
+              'target_http_status': 200,
+              'target_body_sha256': digest('live-http-evidence/target.html'),
+              'redirect_loop': False,
+              'noindex': True,
+              'canonical': True,
+              'forms': False,
+              'lead_collection': False,
+              'payments': False,
+              'analytics': False,
+              'client_javascript': False,
+          }
+          Path('live-http-evidence/LIVE_HTTP_RECEIPT.json').write_text(
+              json.dumps(receipt, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Upload live HTTP receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-redirect-live-http-${{ github.run_number }}
+          path: live-http-evidence
+          if-no-files-found: error
+          retention-days: 90

@@ -1,17 +1,17 @@
 {
-  "schema_version": 1,
-  "status": "LEGACY_COMPATIBILITY_ONLY",
-  "active_brand": false,
-  "redirect_only": true,
-  "canonical_destination": {
-    "brand_ru": "ПРАКСЕЛЬТА",
-    "brand_latin": "PRAXELTA",
-    "repository": "m72692591-collab/praxelta-services"
-  },
-  "new_development_allowed": false,
-  "new_marketing_allowed": false,
-  "lead_collection_allowed": false,
-  "analytics_allowed": false,
-  "archive_after_redirect_verification": true,
-  "owner_decision_date": "2026-08-17"
+  "schema_version": 2,
+  "repository": "m72692591-collab/potok-services",
+  "status": "LEGACY_REDIRECT_ONLY",
+  "canonical_target": "https://m72692591-collab.github.io/praxelta-services/",
+  "forms": false,
+  "lead_collection": false,
+  "payments": false,
+  "analytics": false,
+  "client_javascript": false,
+  "active_worker": false,
+  "active_queue": false,
+  "new_product_development": false,
+  "branch_deletion": false,
+  "history_rewrite": false,
+  "archive_gate": "REQUIRES_LIVE_HTTP_EVIDENCE_AND_REPOSITORY_ADMINISTRATION"
 }

@@ -1,8 +1,0 @@
-{
-  "status": "PUBLIC_QWEN_WORKER_RUN_STARTED",
-  "checked_at_utc": "2026-08-19T19:04:25Z",
-  "run_id": "32290963822",
-  "head_sha": "fe409ca8237c8c1d8cc7d54f5ad2702a9d944bc4",
-  "model": "qwen2.5-coder:1.5b",
-  "budget_rub": 0
-}

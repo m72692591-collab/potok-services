@@ -1,9 +1,0 @@
-{
-  "schema": 1,
-  "task_id": "public-worker-proof-v4-20260819",
-  "status": "IMPORTED",
-  "imported_at_utc": "2026-08-19T15:59:54.408210+00:00",
-  "model": "qwen2.5-coder:0.5b",
-  "budget_rub": 0,
-  "external_side_effects": "deny"
-}
