@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "status": "PUBLIC_QWEN_WORKER_DEGRADED",
-  "checked_at_utc": "2026-08-19T16:03:45.930578+00:00",
+  "checked_at_utc": "2026-08-19T16:06:42.775696+00:00",
   "model": "qwen2.5-coder:1.5b",
   "processed": [
-    "public-worker-proof-v5-20260819"
+    "public-worker-proof-v6-20260819"
   ],
   "done": 0,
   "failed": 1,
