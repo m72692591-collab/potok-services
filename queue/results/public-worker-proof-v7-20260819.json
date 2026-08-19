@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "task_id": "public-worker-proof-v7-20260819",
+  "status": "DONE",
+  "finished_at_utc": "2026-08-19T16:09:37.767567+00:00",
+  "provider_type": "ollama",
+  "model": "qwen2.5-coder:1.5b",
+  "budget_rub": 0,
+  "external_side_effects": "deny",
+  "answer_sha256": null,
+  "applied": {
+    "summary": "Public-safe free worker",
+    "files": [
+      {
+        "path": "public-output/public-worker-proof-v7-20260819/PUBLIC_WORKER_PROOF.md",
+        "relative_path": "PUBLIC_WORKER_PROOF.md",
+        "bytes": 102,
+        "sha256": "3c7d14696ae0d062fe422c585e96979586948914597640c023f3bba1ba16da46"
+      }
+    ]
+  },
+  "boundary": "Public-safe text/file work only. No accounts, publication or payments."
+}
