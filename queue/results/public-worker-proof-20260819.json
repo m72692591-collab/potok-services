@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "task_id": "public-worker-proof-20260819",
+  "status": "REJECTED",
+  "finished_at_utc": "2026-08-19T15:47:32.633395+00:00",
+  "provider_type": "policy",
+  "model": null,
+  "budget_rub": 0,
+  "external_side_effects": "deny",
+  "error": "prompt contains a forbidden public-worker marker",
+  "boundary": "Rejected before model execution; no external side effect and no output file."
+}
