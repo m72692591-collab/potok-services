@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "task_id": "public-worker-proof-v4-20260819",
+  "status": "READY",
+  "public_context_only": true,
+  "action": "write_files",
+  "budget_rub": 0,
+  "provider_policy": "free_only",
+  "external_side_effects": "deny",
+  "expected_files": [
+    {
+      "path": "PUBLIC_WORKER_PROOF.md",
+      "content_sha256": "93f2c28c9b1c4ac69b101bf573bfaf314ee3c87f4976bd937a1551fae4619bb2"
+    }
+  ],
+  "prompt": "Create exactly one file at PUBLIC_WORKER_PROOF.md. Its complete content, including the final newline, must be exactly: # Public-safe free worker\n\nPUBLIC_QWEN_WORKER_OK\n\nZero-cost public-context file execution was completed.\nReturn only the required JSON object."
+}
