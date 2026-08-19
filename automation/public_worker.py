@@ -21,6 +21,29 @@ STATE = ROOT / "automation/health/PUBLIC_QWEN_WORKER_STATE.json"
 MODEL = os.environ.get("PUBLIC_QWEN_MODEL", "qwen2.5-coder:0.5b")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 
+WRITE_FILES_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "files": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "minLength": 1},
+                    "content": {"type": "string"},
+                },
+                "required": ["path", "content"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["summary", "files"],
+    "additionalProperties": False,
+}
+
 
 class WorkerError(RuntimeError):
     pass
@@ -109,9 +132,9 @@ def validate_task(task: dict[str, Any]) -> str:
 def call_ollama(task: dict[str, Any]) -> str:
     action = task["action"]
     format_instruction = (
-        "Return only one JSON object with summary and a non-empty files array. "
-        "Each file must contain path and complete content. Paths are relative names "
-        "inside the task's isolated public-output directory. Do not use Markdown fences."
+        "Return exactly one JSON object. It must have summary (string) and files "
+        "(non-empty array). Every files item must be an object with path and complete "
+        "content strings. Do not return an array of file names and do not use Markdown."
         if action == "write_files"
         else "Return a concise, complete answer in Russian unless the task requests another language."
     )
@@ -128,10 +151,10 @@ def call_ollama(task: dict[str, Any]) -> str:
             {"role": "system", "content": system},
             {"role": "user", "content": str(task["prompt"])},
         ],
-        "options": {"temperature": 0.1, "num_ctx": 4096, "num_predict": 900},
+        "options": {"temperature": 0.0, "num_ctx": 4096, "num_predict": 900},
     }
     if action == "write_files":
-        payload["format"] = "json"
+        payload["format"] = WRITE_FILES_SCHEMA
     request = urllib.request.Request(
         f"{OLLAMA_URL}/api/chat",
         data=json.dumps(payload).encode("utf-8"),
@@ -168,9 +191,9 @@ def apply_write_files(task_id: str, response: str) -> dict[str, Any]:
     target_root = (PUBLIC_OUTPUT / task_id).resolve()
     prepared: list[tuple[Path, str]] = []
     seen: set[Path] = set()
-    for item in files:
+    for index, item in enumerate(files):
         if not isinstance(item, dict):
-            raise WorkerError("file item must be object")
+            raise WorkerError(f"file item {index} must be object")
         relative = str(item.get("path", "")).replace("\\", "/").strip("/")
         if not relative or relative.startswith(".") or ".." in Path(relative).parts:
             raise WorkerError(f"unsafe relative path: {relative!r}")
@@ -259,6 +282,7 @@ def process(path: Path) -> dict[str, Any]:
     }
     write_json_atomic(RECEIPTS / f"{task_id}.json", receipt)
 
+    response = ""
     try:
         response = call_ollama(task)
         if task["action"] == "write_files":
@@ -292,6 +316,8 @@ def process(path: Path) -> dict[str, Any]:
             "budget_rub": 0,
             "external_side_effects": "deny",
             "error": str(exc),
+            "response_sha256": sha256_text(response) if response else None,
+            "response_preview": response[:500] if response else None,
         }
     write_json_atomic(RESULTS / f"{task_id}.json", result)
     return result
