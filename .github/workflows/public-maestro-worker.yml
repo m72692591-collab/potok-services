@@ -84,13 +84,13 @@ jobs:
         env:
           WORKER_OUTCOME: ${{ steps.worker.outcome }}
         run: |
-          mkdir -p automation/health
+          mkdir -p queue/receipts queue/results public-output automation/health
           if [ ! -f automation/health/PUBLIC_QWEN_WORKER_STATE.json ]; then
             printf '{\n  "schema": 1,\n  "status": "PUBLIC_QWEN_WORKER_FAILED_BEFORE_RESULT",\n  "checked_at_utc": "%s",\n  "run_id": "%s",\n  "model": "%s",\n  "step_outcome": "%s",\n  "budget_rub": 0\n}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$GITHUB_RUN_ID" "$PUBLIC_QWEN_MODEL" "$WORKER_OUTCOME" > automation/health/PUBLIC_QWEN_WORKER_STATE.json
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add queue/receipts queue/results public-output automation/health/PUBLIC_QWEN_WORKER_STATE.json || true
+          git add -A -- queue/receipts queue/results public-output automation/health/PUBLIC_QWEN_WORKER_STATE.json
           if ! git diff --cached --quiet; then
             git commit -m 'Publish public-safe MAESTRO results'
             git pull --rebase origin main
