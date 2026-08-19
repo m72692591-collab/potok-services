@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "task_id": "public-worker-proof-v4-20260819",
+  "status": "FAILED",
+  "finished_at_utc": "2026-08-19T15:59:57.825395+00:00",
+  "provider_type": "ollama",
+  "model": "qwen2.5-coder:0.5b",
+  "budget_rub": 0,
+  "external_side_effects": "deny",
+  "error": "write_files paths do not match expected_files: expected=['PUBLIC_WORKER_PROOF.md'] actual=['PUBLIC_QWEN_WORKER_OK']",
+  "response_sha256": "7dae0e5457730fa90d4ae1bb7b3fe950012ce729622869eb80f0e0093fe0c9e3",
+  "response_preview": "{\n  \"summary\": \"# Public-safe free worker\",\n  \"files\": [\n    {\n      \"path\": \"PUBLIC_QWEN_WORKER_OK\",\n      \"content\": \"Zero-cost public-context file execution was completed.\"\n    }\n  ]\n}"
+}
