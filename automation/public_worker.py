@@ -60,6 +60,13 @@ def safe_id(value: str) -> str:
     return cleaned[:120]
 
 
+def safe_relative(value: str) -> str:
+    relative = value.replace("\\", "/").strip("/")
+    if not relative or relative.startswith(".") or ".." in Path(relative).parts:
+        raise WorkerError(f"unsafe relative path: {relative!r}")
+    return relative
+
+
 def load_json(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -96,6 +103,26 @@ def sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def expected_file_contract(task: dict[str, Any]) -> dict[str, str]:
+    raw = task.get("expected_files")
+    if raw is None:
+        return {}
+    if not isinstance(raw, list) or not raw or len(raw) > 10:
+        raise WorkerError("expected_files must be a non-empty array with at most 10 items")
+    contract: dict[str, str] = {}
+    for index, item in enumerate(raw):
+        if not isinstance(item, dict):
+            raise WorkerError(f"expected_files item {index} must be object")
+        relative = safe_relative(str(item.get("path", "")))
+        digest = str(item.get("content_sha256", "")).strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise WorkerError(f"expected_files item {index} has invalid content_sha256")
+        if relative in contract:
+            raise WorkerError(f"duplicate expected path: {relative}")
+        contract[relative] = digest
+    return contract
+
+
 def validate_task(task: dict[str, Any]) -> str:
     task_id = safe_id(str(task.get("task_id", "")))
     if task.get("status") != "READY":
@@ -126,15 +153,22 @@ def validate_task(task: dict[str, Any]) -> str:
     lowered = prompt.casefold()
     if any(marker in lowered for marker in forbidden):
         raise WorkerError("prompt contains a forbidden public-worker marker")
+    if task.get("action") == "write_files":
+        expected_file_contract(task)
+    elif task.get("expected_files") is not None:
+        raise WorkerError("expected_files is allowed only for write_files")
     return task_id
 
 
 def call_ollama(task: dict[str, Any]) -> str:
     action = task["action"]
+    contract = expected_file_contract(task) if action == "write_files" else {}
+    exact_paths = ", ".join(contract) if contract else "the path requested by the task"
     format_instruction = (
         "Return exactly one JSON object. It must have summary (string) and files "
         "(non-empty array). Every files item must be an object with path and complete "
-        "content strings. Do not return an array of file names and do not use Markdown."
+        f"content strings. Use exactly these file paths: {exact_paths}. "
+        "Do not return an array of file names and do not use Markdown."
         if action == "write_files"
         else "Return a concise, complete answer in Russian unless the task requests another language."
     )
@@ -175,7 +209,11 @@ def call_ollama(task: dict[str, Any]) -> str:
     return content
 
 
-def apply_write_files(task_id: str, response: str) -> dict[str, Any]:
+def apply_write_files(
+    task_id: str,
+    response: str,
+    contract: dict[str, str],
+) -> dict[str, Any]:
     try:
         parsed = json.loads(response)
     except json.JSONDecodeError as exc:
@@ -189,14 +227,12 @@ def apply_write_files(task_id: str, response: str) -> dict[str, Any]:
         raise WorkerError("too many files")
 
     target_root = (PUBLIC_OUTPUT / task_id).resolve()
-    prepared: list[tuple[Path, str]] = []
-    seen: set[Path] = set()
+    prepared: list[tuple[str, Path, str]] = []
+    seen: set[str] = set()
     for index, item in enumerate(files):
         if not isinstance(item, dict):
             raise WorkerError(f"file item {index} must be object")
-        relative = str(item.get("path", "")).replace("\\", "/").strip("/")
-        if not relative or relative.startswith(".") or ".." in Path(relative).parts:
-            raise WorkerError(f"unsafe relative path: {relative!r}")
+        relative = safe_relative(str(item.get("path", "")))
         content = item.get("content")
         if not isinstance(content, str):
             raise WorkerError(f"file content must be string: {relative}")
@@ -205,17 +241,34 @@ def apply_write_files(task_id: str, response: str) -> dict[str, Any]:
         target = (target_root / relative).resolve()
         if target != target_root and target_root not in target.parents:
             raise WorkerError(f"path escapes task output: {relative}")
-        if target in seen:
+        if relative in seen:
             raise WorkerError(f"duplicate path: {relative}")
-        seen.add(target)
-        prepared.append((target, content))
+        seen.add(relative)
+        prepared.append((relative, target, content))
+
+    if contract:
+        actual_paths = {relative for relative, _, _ in prepared}
+        expected_paths = set(contract)
+        if actual_paths != expected_paths:
+            raise WorkerError(
+                "write_files paths do not match expected_files: "
+                f"expected={sorted(expected_paths)} actual={sorted(actual_paths)}"
+            )
+        for relative, _, content in prepared:
+            digest = sha256_text(content)
+            if digest != contract[relative]:
+                raise WorkerError(
+                    f"content hash mismatch for {relative}: "
+                    f"expected={contract[relative]} actual={digest}"
+                )
 
     written: list[dict[str, Any]] = []
-    for target, content in prepared:
+    for relative, target, content in prepared:
         write_text_atomic(target, content)
         written.append(
             {
                 "path": str(target.relative_to(ROOT)).replace("\\", "/"),
+                "relative_path": relative,
                 "bytes": len(content.encode("utf-8")),
                 "sha256": sha256_text(content),
             }
@@ -286,7 +339,11 @@ def process(path: Path) -> dict[str, Any]:
     try:
         response = call_ollama(task)
         if task["action"] == "write_files":
-            result_value = apply_write_files(task_id, response)
+            result_value = apply_write_files(
+                task_id,
+                response,
+                expected_file_contract(task),
+            )
             answer = ""
         else:
             result_value = None
