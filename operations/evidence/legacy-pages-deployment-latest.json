@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "status": "PAGES_DEPLOYMENT_ACTION_COMPLETED",
+  "checked_at_utc": "2026-08-20T01:09:33.755794+00:00",
+  "repository": "m72692591-collab/potok-services",
+  "run_id": 32319978043,
+  "run_attempt": 1,
+  "source_sha": "8caac76df20578c10042932667dc95b625c07e84",
+  "source_branch": "main",
+  "page_url": "https://m72692591-collab.github.io/potok-services/",
+  "artifact_path": "public",
+  "client_javascript": false,
+  "forms": false,
+  "lead_collection": false,
+  "payments": false,
+  "analytics": false,
+  "live_http_verified": false,
+  "archive_verified": false,
+  "secret_value_stored": false
+}
