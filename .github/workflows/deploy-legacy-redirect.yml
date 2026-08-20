@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -66,3 +66,65 @@ jobs:
       - name: Deploy static redirect
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Checkout main for sanitized receipt
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Persist deployment receipt without retriggering deployment
+        env:
+          DEPLOYED_PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          mkdir -p operations/evidence
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          payload = {
+              'schema_version': 1,
+              'status': 'PAGES_DEPLOYMENT_ACTION_COMPLETED',
+              'checked_at_utc': datetime.now(timezone.utc).isoformat(),
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha': os.environ['GITHUB_SHA'],
+              'source_branch': os.environ['GITHUB_REF_NAME'],
+              'page_url': os.environ['DEPLOYED_PAGE_URL'],
+              'artifact_path': 'public',
+              'client_javascript': False,
+              'forms': False,
+              'lead_collection': False,
+              'payments': False,
+              'analytics': False,
+              'live_http_verified': False,
+              'archive_verified': False,
+              'secret_value_stored': False,
+          }
+          Path('operations/evidence/legacy-pages-deployment-latest.json').write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add operations/evidence/legacy-pages-deployment-latest.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'Record verified legacy Pages deployment receipt'
+          for attempt in 1 2 3 4 5 6; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git pull --rebase origin main
+            sleep $((attempt * 3))
+          done
+          exit 1
