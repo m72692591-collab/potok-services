@@ -1,0 +1,172 @@
+name: Archive legacy repository after live verification
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy verified legacy redirect
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: archive-legacy-repository
+  cancel-in-progress: false
+
+jobs:
+  verify-and-archive:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Live HTTP verification
+        run: |
+          set -euo pipefail
+          mkdir -p live-archive-evidence
+          legacy_url='https://m72692591-collab.github.io/potok-services/'
+          target_url='https://m72692591-collab.github.io/praxelta-services/'
+          legacy_status="$(curl --proto '=https' --tlsv1.2 --max-time 30 -sS -o /tmp/legacy-body.html -w '%{http_code}' "$legacy_url")"
+          target_status="$(curl --proto '=https' --tlsv1.2 --max-time 30 -sS -L -o /dev/null -w '%{http_code}' "$target_url")"
+          LEGACY_STATUS="$legacy_status" TARGET_STATUS="$target_status" python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          import re
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          target = 'https://m72692591-collab.github.io/praxelta-services/'
+          body = Path('/tmp/legacy-body.html').read_text(encoding='utf-8-sig')
+          legacy_status = int(os.environ['LEGACY_STATUS'])
+          target_status = int(os.environ['TARGET_STATUS'])
+          errors = []
+          if legacy_status != 200:
+              errors.append(f'legacy HTTP status is {legacy_status}')
+          if target_status < 200 or target_status >= 400:
+              errors.append(f'target HTTP status is {target_status}')
+          if target not in body:
+              errors.append('canonical target missing from live body')
+          if not re.search(r'<link\s+rel=["\']canonical["\']\s+href=["\']' + re.escape(target), body, re.I):
+              errors.append('exact canonical link missing from live body')
+          if not re.search(r'<meta\s+name=["\']robots["\'][^>]*noindex', body, re.I):
+              errors.append('noindex missing from live body')
+          if not re.search(r'<meta\s+http-equiv=["\']refresh["\'][^>]*' + re.escape(target), body, re.I):
+              errors.append('static redirect missing from live body')
+          forbidden = {
+              'client_javascript': r'<script\b|javascript:|\bon\w+\s*=',
+              'forms': r'<form\b|<input\b|<button\b|<textarea\b|<select\b',
+              'network_client': r'fetch\s*\(|XMLHttpRequest|WebSocket\s*\(',
+              'analytics': r'google-analytics|googletagmanager|gtag\s*\(|yaCounter|metrika|analytics',
+              'payments_or_leads': r'checkout|payment|merchant|webhook|lead[-_ ]?intake|оставить\s+заявку|оплатить|заказать',
+          }
+          for label, pattern in forbidden.items():
+              if re.search(pattern, body, re.I):
+                  errors.append(f'forbidden live feature: {label}')
+          report = {
+              'schema_version': 1,
+              'checked_at_utc': datetime.now(timezone.utc).isoformat(),
+              'status': 'PASS' if not errors else 'FAIL',
+              'legacy_url': 'https://m72692591-collab.github.io/potok-services/',
+              'canonical_target': target,
+              'legacy_http_status': legacy_status,
+              'target_http_status': target_status,
+              'body_sha256': hashlib.sha256(body.encode('utf-8')).hexdigest(),
+              'client_javascript': False if not any('client_javascript' in item for item in errors) else None,
+              'forms': False if not any('forms' in item for item in errors) else None,
+              'analytics': False if not any('analytics' in item for item in errors) else None,
+              'payments_or_leads': False if not any('payments_or_leads' in item for item in errors) else None,
+              'raw_body_stored': False,
+              'errors': errors,
+          }
+          Path('live-archive-evidence/live-http-receipt.json').write_text(
+              json.dumps(report, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          if errors:
+              raise SystemExit(1)
+          PY
+
+      - name: Archive repository and repeat API GET
+        id: archive
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.POTOK_REPOSITORY_ADMIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            cat > live-archive-evidence/archive-api-receipt.json <<'EOF'
+          {
+            "schema_version": 1,
+            "status": "EXTERNAL_BLOCKED_MISSING_REPOSITORY_ADMIN_TOKEN",
+            "archived": false,
+            "required_secret": "POTOK_REPOSITORY_ADMIN_TOKEN",
+            "secret_value_stored": false
+          }
+          EOF
+            exit 2
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}" \
+            --method PATCH \
+            -F archived=true \
+            >/tmp/archive-patch.json
+          gh api "repos/${GITHUB_REPOSITORY}" >/tmp/archive-get.json
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          patch = json.loads(Path('/tmp/archive-patch.json').read_text(encoding='utf-8'))
+          reread = json.loads(Path('/tmp/archive-get.json').read_text(encoding='utf-8'))
+          archived = reread.get('archived') is True
+          report = {
+              'schema_version': 1,
+              'checked_at_utc': datetime.now(timezone.utc).isoformat(),
+              'status': 'ARCHIVED_VERIFIED_BY_REPEAT_GET' if archived else 'ARCHIVE_PATCH_NOT_VERIFIED',
+              'repository': reread.get('full_name'),
+              'patch_response_archived': patch.get('archived'),
+              'repeat_get_archived': reread.get('archived'),
+              'default_branch': reread.get('default_branch'),
+              'branch_deletion': False,
+              'history_rewrite': False,
+              'secret_value_stored': False,
+          }
+          Path('live-archive-evidence/archive-api-receipt.json').write_text(
+              json.dumps(report, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          if not archived:
+              raise SystemExit(1)
+          PY
+
+      - name: Upload live and API receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-live-archive-${{ github.run_id }}
+          path: live-archive-evidence
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce archive receipt
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('live-archive-evidence/archive-api-receipt.json')
+          if not path.is_file():
+              raise SystemExit('archive API receipt is missing')
+          receipt = json.loads(path.read_text(encoding='utf-8'))
+          if receipt.get('status') != 'ARCHIVED_VERIFIED_BY_REPEAT_GET':
+              raise SystemExit(receipt.get('status', 'archive status missing'))
+          PY
