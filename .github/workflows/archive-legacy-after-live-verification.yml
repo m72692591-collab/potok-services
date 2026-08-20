@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: archive-legacy-repository
@@ -23,6 +23,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
+      - name: Checkout main evidence state
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          show-progress: false
+
       - name: Live HTTP verification
         run: |
           set -euo pipefail
@@ -72,6 +79,9 @@ jobs:
               'schema_version': 1,
               'checked_at_utc': datetime.now(timezone.utc).isoformat(),
               'status': 'PASS' if not errors else 'FAIL',
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
               'legacy_url': 'https://m72692591-collab.github.io/potok-services/',
               'canonical_target': target,
               'legacy_http_status': legacy_status,
@@ -91,6 +101,77 @@ jobs:
           if errors:
               raise SystemExit(1)
           PY
+
+      - name: Persist observable live and pre-archive receipts
+        env:
+          ADMIN_TOKEN_AVAILABLE: ${{ secrets.POTOK_REPOSITORY_ADMIN_TOKEN != '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p operations/evidence
+          ADMIN_TOKEN_AVAILABLE="$ADMIN_TOKEN_AVAILABLE" python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          live = json.loads(
+              Path('live-archive-evidence/live-http-receipt.json').read_text(encoding='utf-8')
+          )
+          deployment_path = Path('operations/evidence/legacy-pages-deployment-latest.json')
+          deployment = (
+              json.loads(deployment_path.read_text(encoding='utf-8'))
+              if deployment_path.is_file()
+              else None
+          )
+          Path('operations/evidence/legacy-live-http-latest.json').write_text(
+              json.dumps(live, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          available = os.environ.get('ADMIN_TOKEN_AVAILABLE', '').casefold() == 'true'
+          gate = {
+              'schema_version': 1,
+              'checked_at_utc': datetime.now(timezone.utc).isoformat(),
+              'status': (
+                  'READY_FOR_ADMIN_PATCH'
+                  if available
+                  else 'EXTERNAL_BLOCKED_MISSING_REPOSITORY_ADMIN_TOKEN'
+              ),
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'run_id': int(os.environ['GITHUB_RUN_ID']),
+              'live_http_status': live.get('status'),
+              'live_body_sha256': live.get('body_sha256'),
+              'deployment_run_id': deployment.get('run_id') if deployment else None,
+              'required_secret': 'POTOK_REPOSITORY_ADMIN_TOKEN',
+              'admin_token_available': available,
+              'secret_value_stored': False,
+              'archived_verified': False,
+              'branch_deletion': False,
+              'history_rewrite': False,
+          }
+          Path('operations/evidence/legacy-archive-gate-latest.json').write_text(
+              json.dumps(gate, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            operations/evidence/legacy-live-http-latest.json \
+            operations/evidence/legacy-archive-gate-latest.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'Record live legacy redirect and pre-archive receipts'
+          for attempt in 1 2 3 4 5 6; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git pull --rebase origin main
+            sleep $((attempt * 3))
+          done
+          exit 1
 
       - name: Archive repository and repeat API GET
         id: archive
