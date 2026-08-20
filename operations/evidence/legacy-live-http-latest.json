@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "checked_at_utc": "2026-08-20T01:09:44.167995+00:00",
+  "status": "PASS",
+  "repository": "m72692591-collab/potok-services",
+  "run_id": 32320003862,
+  "run_attempt": 1,
+  "legacy_url": "https://m72692591-collab.github.io/potok-services/",
+  "canonical_target": "https://m72692591-collab.github.io/praxelta-services/",
+  "legacy_http_status": 200,
+  "target_http_status": 200,
+  "body_sha256": "cd628b44df6ddf2914a41969fe91acdc203a56375a5a017ad881260f657cfa01",
+  "client_javascript": false,
+  "forms": false,
+  "analytics": false,
+  "payments_or_leads": false,
+  "raw_body_stored": false,
+  "errors": []
+}

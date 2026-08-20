@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "checked_at_utc": "2026-08-20T01:09:44.272222+00:00",
+  "status": "EXTERNAL_BLOCKED_MISSING_REPOSITORY_ADMIN_TOKEN",
+  "repository": "m72692591-collab/potok-services",
+  "run_id": 32320003862,
+  "live_http_status": "PASS",
+  "live_body_sha256": "cd628b44df6ddf2914a41969fe91acdc203a56375a5a017ad881260f657cfa01",
+  "deployment_run_id": 32319978043,
+  "required_secret": "POTOK_REPOSITORY_ADMIN_TOKEN",
+  "admin_token_available": false,
+  "secret_value_stored": false,
+  "archived_verified": false,
+  "branch_deletion": false,
+  "history_rewrite": false
+}
