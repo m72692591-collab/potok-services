@@ -1,17 +1,20 @@
-name: Legacy redirect guard
+name: Legacy redirect V2 guard
 
 on:
   pull_request:
   push:
     branches:
       - main
-      - governance/legacy-compatibility-only-20260817
   workflow_dispatch:
   schedule:
     - cron: "29 3 * * *"
 
 permissions:
   contents: read
+
+concurrency:
+  group: legacy-redirect-v2-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
@@ -26,7 +29,40 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Validate redirect-only contract
+      - name: Compile validator and tests
         run: |
-          python -m py_compile scripts/validate_legacy_redirect.py
-          python scripts/validate_legacy_redirect.py
+          set -euo pipefail
+          python -m py_compile \
+            scripts/validate_legacy_redirect_v2.py \
+            scripts/tests/test_validate_legacy_redirect_v2.py
+
+      - name: Run negative tests
+        run: |
+          set -euo pipefail
+          python -m unittest discover \
+            -s scripts/tests \
+            -p 'test_validate_legacy_redirect_v2.py' \
+            -v
+
+      - name: Validate redirect-only deployment contract
+        run: |
+          set -euo pipefail
+          mkdir -p legacy-redirect-evidence
+          python scripts/validate_legacy_redirect_v2.py \
+            --root . \
+            --report legacy-redirect-evidence/static-contract.json
+          sha256sum \
+            public/index.html \
+            public/404.html \
+            public/robots.txt \
+            legacy_status.json \
+            > legacy-redirect-evidence/SHA256SUMS.txt
+
+      - name: Upload static contract evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-redirect-static-${{ github.run_id }}
+          path: legacy-redirect-evidence
+          if-no-files-found: error
+          retention-days: 90

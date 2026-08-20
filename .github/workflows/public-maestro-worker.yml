@@ -1,113 +1,15 @@
-name: Public-safe MAESTRO Qwen worker
+name: ARCHIVED — public MAESTRO worker disabled
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'queue/inbox/**'
-      - 'automation/public_worker.py'
-      - '.github/workflows/public-maestro-worker.yml'
   workflow_dispatch:
-  schedule:
-    - cron: '37 */6 * * *'
 
 permissions:
-  contents: write
-
-concurrency:
-  group: public-safe-maestro-worker
-  cancel-in-progress: false
-
-env:
-  PUBLIC_QWEN_MODEL: qwen2.5-coder:1.5b
-  OLLAMA_HOST: 127.0.0.1:11434
-  OLLAMA_NO_CLOUD: 'true'
+  contents: read
 
 jobs:
-  preflight:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+  historical-only:
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          show-progress: false
-      - name: Publish immutable run-start evidence
-        run: |
-          mkdir -p automation/health
-          printf '{\n  "status": "PUBLIC_QWEN_WORKER_RUN_STARTED",\n  "checked_at_utc": "%s",\n  "run_id": "%s",\n  "head_sha": "%s",\n  "model": "%s",\n  "budget_rub": 0\n}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$PUBLIC_QWEN_MODEL" > automation/health/PUBLIC_QWEN_WORKER_STARTED.json
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add automation/health/PUBLIC_QWEN_WORKER_STARTED.json
-          git commit -m 'Publish public Qwen worker start evidence'
-          git pull --rebase origin main
-          git push origin HEAD:main
-
-  process:
-    needs: preflight
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Checkout latest queue
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          show-progress: false
-
-      - name: Cache free Qwen model
-        uses: actions/cache@v4
-        with:
-          path: ~/.ollama/models
-          key: potok-public-worker-qwen25coder-15b-v1
-
-      - name: Install official Ollama
-        run: curl -fsSL https://ollama.com/install.sh | sh
-
-      - name: Start Ollama and load free model
-        run: |
-          nohup ollama serve > /tmp/public-ollama.out.log 2> /tmp/public-ollama.err.log &
-          for i in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
-            sleep 2
-          done
-          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
-          ollama pull "$PUBLIC_QWEN_MODEL"
-
-      - name: Process public-safe queue
-        id: worker
-        continue-on-error: true
-        run: python automation/public_worker.py
-
-      - name: Persist terminal worker state
-        if: always()
-        env:
-          WORKER_OUTCOME: ${{ steps.worker.outcome }}
-        run: |
-          mkdir -p queue/receipts queue/results public-output automation/health
-          if [ ! -f automation/health/PUBLIC_QWEN_WORKER_STATE.json ]; then
-            printf '{\n  "schema": 1,\n  "status": "PUBLIC_QWEN_WORKER_FAILED_BEFORE_RESULT",\n  "checked_at_utc": "%s",\n  "run_id": "%s",\n  "model": "%s",\n  "step_outcome": "%s",\n  "budget_rub": 0\n}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$GITHUB_RUN_ID" "$PUBLIC_QWEN_MODEL" "$WORKER_OUTCOME" > automation/health/PUBLIC_QWEN_WORKER_STATE.json
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A -- queue/receipts queue/results public-output automation/health/PUBLIC_QWEN_WORKER_STATE.json
-          if ! git diff --cached --quiet; then
-            git commit -m 'Publish public-safe MAESTRO results'
-            git pull --rebase origin main
-            git push origin HEAD:main
-          fi
-          if [ "$WORKER_OUTCOME" != "success" ]; then exit 1; fi
-
-      - name: Upload diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: public-maestro-diagnostics
-          path: |
-            /tmp/public-ollama.out.log
-            /tmp/public-ollama.err.log
-            automation/health/PUBLIC_QWEN_WORKER_STATE.json
-            queue/results/**
-          if-no-files-found: warn
-          retention-days: 14
+      - name: Historical marker
+        run: echo 'This worker is permanently disabled; potok-services is legacy redirect only.'
