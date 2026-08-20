@@ -1,0 +1,68 @@
+name: Deploy verified legacy redirect
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "public/**"
+      - "index.html"
+      - "404.html"
+      - "robots.txt"
+      - "legacy_status.json"
+      - "scripts/validate_legacy_redirect_v2.py"
+      - "scripts/tests/test_validate_legacy_redirect_v2.py"
+      - ".github/workflows/deploy-legacy-redirect.yml"
+      - ".github/workflows/archive-legacy-after-live-verification.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: legacy-pages-deployment
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate exact public artifact
+        run: |
+          set -euo pipefail
+          python -m unittest discover \
+            -s scripts/tests \
+            -p 'test_validate_legacy_redirect_v2.py' \
+            -v
+          python scripts/validate_legacy_redirect_v2.py --root .
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload isolated Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy static redirect
+        id: deployment
+        uses: actions/deploy-pages@v4
