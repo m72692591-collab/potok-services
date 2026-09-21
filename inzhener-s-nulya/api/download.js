@@ -1,21 +1,14 @@
 import{Readable}from'node:stream';
 import{get,list}from'@vercel/blob';
 import{CATALOG,fetchYandexOrder,json,safeOrderState,verifyOrderToken}from'./_shared.js';
-
-function auth(){
-  if(process.env.BLOB_READ_WRITE_TOKEN)return{token:process.env.BLOB_READ_WRITE_TOKEN};
-  if(process.env.BLOB_STORE_ID&&process.env.VERCEL_OIDC_TOKEN){
-    return{storeId:process.env.BLOB_STORE_ID,oidcToken:process.env.VERCEL_OIDC_TOKEN};
-  }
-  return{};
-}
+import{blobAuth,reserveDownload}from'./_downloads.js';
 
 function norm(s){
   return String(s||'').normalize('NFKC').toLowerCase().replace(/[^a-zа-яё0-9]/giu,'');
 }
 
 async function resolveBlobPath(productCode,expected){
-  const{blobs}=await list({limit:100,...auth()});
+  const{blobs}=await list({limit:100,...blobAuth()});
   const exact=blobs.find(b=>b.pathname===expected);
   if(exact)return exact.pathname;
 
@@ -53,8 +46,11 @@ export default async function handler(req,res){
     const pathname=await resolveBlobPath(pc,p.blobPath);
 
     stage='blob_get';
-    const result=await get(pathname,{access:'private',useCache:true,...auth()});
+    const result=await get(pathname,{access:'private',useCache:true,...blobAuth()});
     if(!result||result.statusCode!==200)throw new Error('blob_get_failed');
+
+    stage='download_limit';
+    await reserveDownload(id);
 
     const filename=pathname.split('/').pop()||'course.zip';
     res.statusCode=200;
@@ -71,6 +67,8 @@ export default async function handler(req,res){
       try{res.destroy(e)}catch{}
       return;
     }
+    if(msg==='download_limit_reached')return json(res,429,{error:'download_limit_reached'});
+    if(msg==='download_window_expired')return json(res,410,{error:'download_window_expired'});
     const known=['blob_not_found','blob_path_ambiguous','blob_get_failed'];
     const code=known.includes(msg)?msg:stage+'_failed';
     return json(res,503,{error:'download_unavailable',code});
