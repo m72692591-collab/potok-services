@@ -1,16 +1,13 @@
-import{issueSignedToken,presignUrl,list}from'@vercel/blob';
+import{Readable}from'node:stream';
+import{get,list}from'@vercel/blob';
 import{CATALOG,fetchYandexOrder,json,safeOrderState,verifyOrderToken}from'./_shared.js';
 
-function signingAuth(){
+function auth(){
   if(process.env.BLOB_READ_WRITE_TOKEN)return{token:process.env.BLOB_READ_WRITE_TOKEN};
   if(process.env.BLOB_STORE_ID&&process.env.VERCEL_OIDC_TOKEN){
     return{storeId:process.env.BLOB_STORE_ID,oidcToken:process.env.VERCEL_OIDC_TOKEN};
   }
-  throw new Error('blob_auth_missing');
-}
-
-function listAuth(){
-  return process.env.BLOB_READ_WRITE_TOKEN?{token:process.env.BLOB_READ_WRITE_TOKEN}:{};
+  return{};
 }
 
 function norm(s){
@@ -18,7 +15,7 @@ function norm(s){
 }
 
 async function resolveBlobPath(productCode,expected){
-  const{blobs}=await list({limit:100,...listAuth()});
+  const{blobs}=await list({limit:100,...auth()});
   const exact=blobs.find(b=>b.pathname===expected);
   if(exact)return exact.pathname;
 
@@ -55,28 +52,26 @@ export default async function handler(req,res){
     stage='blob_resolve';
     const pathname=await resolveBlobPath(pc,p.blobPath);
 
-    stage='blob_sign';
-    const validUntil=Date.now()+300000;
-    const signed=await issueSignedToken({
-      pathname,
-      operations:['get'],
-      validUntil,
-      ...signingAuth()
-    });
+    stage='blob_get';
+    const result=await get(pathname,{access:'private',useCache:true,...auth()});
+    if(!result||result.statusCode!==200)throw new Error('blob_get_failed');
 
-    stage='blob_presign';
-    const{presignedUrl}=await presignUrl(signed,{
-      pathname,
-      operation:'get',
-      access:'private',
-      validUntil
-    });
+    const filename=pathname.split('/').pop()||'course.zip';
+    res.statusCode=200;
+    res.setHeader('Content-Type',result.blob.contentType||'application/zip');
+    res.setHeader('Content-Disposition',`attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.setHeader('Cache-Control','private, no-store');
+    res.setHeader('X-Content-Type-Options','nosniff');
 
-    return json(res,200,{url:presignedUrl,expiresInSeconds:300});
+    Readable.fromWeb(result.stream).pipe(res);
   }catch(e){
     const msg=String(e?.message||'unknown');
     console.error('download_unavailable',stage,msg);
-    const known=['blob_auth_missing','blob_not_found','blob_path_ambiguous'];
+    if(res.headersSent){
+      try{res.destroy(e)}catch{}
+      return;
+    }
+    const known=['blob_not_found','blob_path_ambiguous','blob_get_failed'];
     const code=known.includes(msg)?msg:stage+'_failed';
     return json(res,503,{error:'download_unavailable',code});
   }
