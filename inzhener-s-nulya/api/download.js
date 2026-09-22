@@ -1,6 +1,8 @@
 import{Readable}from'node:stream';
 import{get,list}from'@vercel/blob';
 import{CATALOG,fetchYandexOrder,json,safeOrderState,verifyOrderToken}from'./_shared.js';
+import{getTbankPayment}from'./_tbank-payments.js';
+import{safeTbankState,tbankCall}from'./_tbank.js';
 import{blobAuth,reserveDownload}from'./_downloads.js';
 
 function norm(s){
@@ -39,7 +41,15 @@ export default async function handler(req,res){
     if(!p||!verifyOrderToken(id,pc,t))return json(res,403,{error:'forbidden'});
 
     stage='payment_check';
-    const st=safeOrderState(await fetchYandexOrder(id),p);
+    const provider=(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase();
+    let st;
+    if(provider==='tbank'){
+      const ref=await getTbankPayment(id);
+      if(!ref?.paymentId)return json(res,409,{state:'pending'});
+      st=safeTbankState(await tbankCall('GetState',{PaymentId:String(ref.paymentId)}),p,id);
+    }else{
+      st=safeOrderState(await fetchYandexOrder(id),p);
+    }
     if(st.state!=='paid')return json(res,409,st);
 
     stage='blob_resolve';
