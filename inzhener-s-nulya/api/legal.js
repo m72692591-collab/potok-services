@@ -4,9 +4,9 @@ const base=()=>{
   const legalName=process.env.BUSINESS_LEGAL_NAME||'ИП Григоров Михаил Владимирович';
   const inn=process.env.BUSINESS_INN||'640100982708';
   const ogrn=process.env.BUSINESS_OGRN||'326045700090104';
-  const email=process.env.BUSINESS_CONTACT_EMAIL||'';
-  const phone=process.env.BUSINESS_CONTACT_PHONE||'';
-  const address=process.env.BUSINESS_ADDRESS||'';
+  const email=process.env.BUSINESS_CONTACT_EMAIL||'grigorov555@mail.ru';
+  const phone=process.env.BUSINESS_CONTACT_PHONE||'8-969-621-34-70';
+  const address=process.env.BUSINESS_ADDRESS||'с. Александров Гай, ул. Дома Газовиков, д. 21';
   const hours=process.env.BUSINESS_HOURS||'Ежедневно, 09:00–20:00 по московскому времени';
   return {legalName,inn,ogrn,email,phone,address,hours};
 };
