@@ -23,10 +23,13 @@ go.onclick=async()=>{
   }catch(e){err.textContent='Ошибка соединения.'}finally{go.disabled=false}
 };
 fetch('/api/readiness').then(r=>r.json()).then(d=>{
-  paymentsReady=Boolean(d.launchReady);
+  paymentsReady=Boolean(d.paymentReady);
+  const m=document.getElementById('mode');
   if(!paymentsReady){
-    const m=document.getElementById('mode');
-    m.textContent='Онлайн-оплата подключается. До активации эквайринга реальные списания не производятся.';
+    m.textContent='Онлайн-оплата подключается. До настройки терминала списания не производятся.';
+    m.style.display='block';
+  }else if(d.environment!=='production'){
+    m.textContent='Тестовый режим Т‑Бизнеса: используйте только тестовые платёжные данные.';
     m.style.display='block';
   }
 }).catch(()=>{});
