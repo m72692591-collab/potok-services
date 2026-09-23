@@ -1,67 +1,101 @@
-import crypto from 'node:crypto';
+import crypto from'node:crypto';
 
-export function tbankApiBase(){
-  return (process.env.TBANK_API_BASE||'https://securepay.tinkoff.ru/v2').replace(/\/$/,'');
+const API='https://securepay.tinkoff.ru/v2';
+
+export function tbankEnv(){
+  if(String(process.env.TBANK_ENV||'').toLowerCase()==='production')return'production';
+  return'test';
 }
 
-export function tbankTerminalKey(){
-  const v=process.env.TBANK_TERMINAL_KEY;
-  if(!v)throw new Error('TBANK_TERMINAL_KEY is not configured');
-  return v;
+export function requireTbankCredentials(){
+  const terminalKey=String(process.env.TBANK_TERMINAL_KEY||'').trim();
+  const password=String(process.env.TBANK_PASSWORD||'').trim();
+  if(!terminalKey)throw new Error('TBANK_TERMINAL_KEY is not configured');
+  if(!password)throw new Error('TBANK_PASSWORD is not configured');
+  return{terminalKey,password};
 }
 
-export function tbankPassword(){
-  const v=process.env.TBANK_PASSWORD;
-  if(!v)throw new Error('TBANK_PASSWORD is not configured');
-  return v;
+function primitiveEntries(payload){
+  return Object.entries(payload||{}).filter(([k,v])=>k!=='Token'&&v!==null&&v!==undefined&&typeof v!=='object');
 }
 
-export function makeTbankToken(payload,password=tbankPassword()){
-  const pairs={};
-  for(const [k,v] of Object.entries(payload||{})){
-    if(k==='Token'||v===undefined||v===null)continue;
-    if(typeof v==='object')continue;
-    pairs[k]=v;
-  }
-  pairs.Password=password;
-  const raw=Object.keys(pairs).sort().map(k=>String(pairs[k])).join('');
-  return crypto.createHash('sha256').update(raw,'utf8').digest('hex');
+export function signTbank(payload){
+  const{password}=requireTbankCredentials();
+  const pairs=[...primitiveEntries(payload),['Password',password]].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);
+  const source=pairs.map(([,v])=>String(v)).join('');
+  return crypto.createHash('sha256').update(source,'utf8').digest('hex');
 }
 
-export function verifyTbankToken(payload){
-  const supplied=String(payload?.Token||'').toLowerCase();
-  if(!/^[a-f0-9]{64}$/.test(supplied))return false;
-  const expected=makeTbankToken(payload).toLowerCase();
-  const a=Buffer.from(expected),b=Buffer.from(supplied);
-  return a.length===b.length&&crypto.timingSafeEqual(a,b);
-}
-
-export async function tbankCall(method,payload={}){
-  const body={TerminalKey:tbankTerminalKey(),...payload};
-  body.Token=makeTbankToken(body);
-  const r=await fetch(`${tbankApiBase()}/${method}`,{
+async function post(method,payload){
+  const body={...payload};
+  body.Token=signTbank(body);
+  const r=await fetch(`${API}/${method}`,{
     method:'POST',
     headers:{'content-type':'application/json'},
     body:JSON.stringify(body),
     cache:'no-store'
   });
-  const d=await r.json().catch(()=>({}));
-  if(!r.ok||d?.Success!==true){
-    const e=new Error('tbank_api_error');
-    e.details={status:r.status,errorCode:d?.ErrorCode,message:d?.Message,details:d?.Details};
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error('tbank_http_error');
+  return data;
+}
+
+export async function initTbankPayment({orderId,amount,title,site,orderPage,contact}){
+  const{terminalKey}=requireTbankCredentials();
+  const data={};
+  if(String(contact||'').includes('@'))data.Email=String(contact);
+  else if(contact)data.Phone=String(contact).replace(/[^+0-9]/g,'');
+  const payload={
+    TerminalKey:terminalKey,
+    Amount:Math.round(Number(amount)*100),
+    OrderId:String(orderId),
+    Description:String(title||'').slice(0,140),
+    Language:'ru',
+    NotificationURL:`${site}/api/tbank-webhook`,
+    SuccessURL:`${orderPage}&result=success`,
+    FailURL:`${orderPage}&result=error`
+  };
+  if(Object.keys(data).length)payload.DATA=data;
+  const d=await post('Init',payload);
+  if(!d?.Success||String(d?.ErrorCode||'')!=='0'||!d?.PaymentURL){
+    const e=new Error('tbank_init_failed');
+    e.providerMessage=d?.Message||d?.Details||'';
     throw e;
   }
+  return{paymentUrl:d.PaymentURL,paymentId:String(d.PaymentId||''),status:d.Status||'NEW'};
+}
+
+export async function fetchTbankOrder(orderId){
+  const{terminalKey}=requireTbankCredentials();
+  const d=await post('CheckOrder',{TerminalKey:terminalKey,OrderId:String(orderId)});
+  if(!d?.Success||String(d?.ErrorCode||'')!=='0')throw new Error('tbank_lookup_failed');
   return d;
 }
 
-export function safeTbankState(o,p,orderId){
-  if(!o)return{state:'not_found'};
-  if(orderId&&String(o.OrderId||'')!==String(orderId))return{state:'mismatch'};
-  const amount=Number(o.Amount);
-  const expected=Math.round(Number(p.price)*100);
-  if(!Number.isFinite(amount)||amount!==expected)return{state:'mismatch'};
-  const status=String(o.Status||'').toUpperCase();
-  if(status==='CONFIRMED')return{state:'paid',paymentStatus:status};
-  if(['REJECTED','CANCELED','REVERSED','REFUNDED','PARTIAL_REFUNDED','PARTIAL_REVERSED','DEADLINE_EXPIRED','AUTH_FAIL'].includes(status))return{state:'failed',paymentStatus:status};
-  return{state:'pending',paymentStatus:status||'NEW'};
+export function safeTbankOrderState(order,product){
+  if(!order||!Array.isArray(order.Payments))return{state:'not_found'};
+  const expected=Math.round(Number(product.price)*100);
+  const payments=order.Payments.filter(x=>Number(x?.Amount)===expected);
+  if(!payments.length)return{state:'mismatch'};
+
+  const confirmed=payments.find(x=>String(x?.Status||'').toUpperCase()==='CONFIRMED');
+  if(confirmed)return{state:'paid',paymentStatus:'CONFIRMED',paymentId:String(confirmed.PaymentId||'')};
+
+  const statuses=payments.map(x=>String(x?.Status||'').toUpperCase()).filter(Boolean);
+  const terminalFailed=['REJECTED','CANCELED','REVERSED','PARTIAL_REVERSED','REFUNDED','PARTIAL_REFUNDED'];
+  if(statuses.some(s=>terminalFailed.includes(s)))return{state:'failed',paymentStatus:statuses[0]||'FAILED'};
+
+  return{state:'pending',paymentStatus:statuses[0]||'NEW'};
+}
+
+export function verifyTbankNotification(payload){
+  try{
+    const{terminalKey}=requireTbankCredentials();
+    if(String(payload?.TerminalKey||'')!==terminalKey)return false;
+    const supplied=String(payload?.Token||'').toLowerCase();
+    if(!/^[a-f0-9]{64}$/.test(supplied))return false;
+    const expected=signTbank(payload).toLowerCase();
+    const a=Buffer.from(supplied,'hex'),b=Buffer.from(expected,'hex');
+    return a.length===b.length&&crypto.timingSafeEqual(a,b);
+  }catch{return false}
 }
