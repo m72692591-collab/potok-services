@@ -1,6 +1,7 @@
 import{Readable}from'node:stream';
 import{get,list}from'@vercel/blob';
 import{CATALOG,fetchYandexOrder,json,safeOrderState,verifyOrderToken}from'./_shared.js';
+import{fetchTbankOrder,safeTbankOrderState}from'./_tbank.js';
 import{getTbankPayment}from'./_tbank-payments.js';
 import{safeTbankState,tbankCall}from'./_tbank.js';
 import{blobAuth,reserveDownload}from'./_downloads.js';
