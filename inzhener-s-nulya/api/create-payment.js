@@ -2,6 +2,8 @@ import crypto from'node:crypto';
 import{CATALOG,baseUrl,json,readJson,requirePayKey,signOrder,validateContact,yandexApiBase}from'./_shared.js';
 import{initTbankPayment}from'./_tbank.js';
 import{saveTbankPayment}from'./_tbank-payments.js';
+import{createRobokassaPaymentUrl,makeInvId}from'./_robokassa.js';
+import{saveRobokassaPayment}from'./_robokassa-payments.js';
 
 const TERMS_VERSION='2026-09-24';
 function provider(){return String(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase()}
@@ -25,6 +27,9 @@ export default async function handler(req,res){
     const contact=validateContact(b.contact);
     if(!p)return json(res,400,{error:'invalid_product'});
     if(!contact)return json(res,400,{error:'invalid_contact'});
+    if(provider()==='robokassa'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)){
+      return json(res,400,{error:'email_required_for_auto_receipt'});
+    }
     if(p.controlOnly){
       const enabled=String(process.env.CONTROL_PURCHASE_ENABLED||'').toLowerCase()==='true';
       const expected=String(process.env.CONTROL_PURCHASE_TOKEN||'');
@@ -45,13 +50,21 @@ export default async function handler(req,res){
       const init=await initTbankPayment({orderId,amount:p.price,title:p.title,site,orderPage,contact});
       paymentUrl=init.paymentUrl;
       try{await saveTbankPayment(orderId,{paymentId:init.paymentId,product:p.code,status:init.status,buyerContact:contact,buyerType:'individual',createdAt:termsAcceptedAt,termsAccepted:true,termsVersion:TERMS_VERSION,termsAcceptedAt,npdReceiptStatus:p.controlOnly?'not_required':'awaiting_payment',offerPath:'/offer',returnPath:'/return',deliveryPath:'/delivery'})}catch(se){console.error('tbank_payment_map_save_failed',String(se?.message||se))}
+    }else if(provider()==='robokassa'){
+      const invId=makeInvId();
+      paymentUrl=createRobokassaPaymentUrl({invId,orderId,product:p.code,amount:p.price,title:p.title,email:contact});
+      await saveRobokassaPayment(orderId,{
+        invId:String(invId),product:p.code,amount:p.price,status:'NEW',buyerContact:contact,buyerType:'individual',
+        createdAt:termsAcceptedAt,termsAccepted:true,termsVersion:TERMS_VERSION,termsAcceptedAt,
+        npdReceiptStatus:p.controlOnly?'not_required':'provider_auto',offerPath:'/offer',returnPath:'/return',deliveryPath:'/delivery'
+      });
     }else{
       paymentUrl=await createYandex(p,contact,orderId,orderPage);
     }
     return json(res,200,{paymentUrl});
   }catch(e){
     console.error('create_payment_failed',String(e?.message||e),e?.providerCode||'',e?.providerMessage||'',e?.providerDetails||'');
-    const cfg=/TBANK_TERMINAL_KEY|TBANK_PASSWORD|YANDEX_PAY_API_KEY|ORDER_HMAC_SECRET/.test(String(e?.message||e));
+    const cfg=/TBANK_TERMINAL_KEY|TBANK_PASSWORD|YANDEX_PAY_API_KEY|ORDER_HMAC_SECRET|ROBOKASSA_MERCHANT_LOGIN|ROBOKASSA_PASSWORD1|ROBOKASSA_PASSWORD2|ROBOKASSA_HASH_ALGO/.test(String(e?.message||e));
     const body={error:cfg?'not_configured':'payment_provider_error'};
     if(provider()==='tbank'&&!cfg){
       body.providerCode=String(e?.providerCode||'');
