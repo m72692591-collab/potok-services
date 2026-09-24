@@ -65,8 +65,10 @@ export default async function handler(req,res){
 
     stage='signed_url';
     const validUntil=Date.now()+2*60*1000;
+    // Work around @vercel/blob signed-URL scope parsing with non-ASCII pathnames:
+    // issue a short-lived wildcard delegation, then sign only the concrete file URL.
     const signedToken=await issueSignedToken({
-      pathname,
+      pathname:'*',
       operations:['get'],
       validUntil,
       ...blobAuth()
