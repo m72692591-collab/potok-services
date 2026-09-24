@@ -1,0 +1,16 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Контрольная покупка — Инженер с нуля</title><style>
+body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f6f8fa;color:#111820;margin:0}.w{max-width:640px;margin:8vh auto;padding:20px}.b{background:#fff;border:1px solid #dbe2e9;border-radius:22px;padding:24px}input{width:100%;box-sizing:border-box;padding:14px;border:1px solid #dbe2e9;border-radius:13px;font:inherit;margin:10px 0}.btn{border:0;border-radius:13px;padding:14px 18px;font-weight:850;background:#ffb000;cursor:pointer;width:100%}.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#58636e;margin:12px 0 16px}.consent input{width:auto;margin:3px 0}.muted{color:#64707c;font-size:14px}</style></head><body><main class="w"><div class="b"><h1>Контрольная покупка — 1 ₽</h1><p>Скрытая служебная страница для проверки боевого терминала Т‑Бизнеса. Курс по этой покупке не выдаётся.</p><p class="muted">После успешной оплаты мы проверим создание платежа, подтверждение банком, возврат на страницу заказа и статус CONFIRMED.</p><input id="contact" placeholder="email@example.com или +7…"><label class="consent"><input id="agree" type="checkbox"><span>Я подтверждаю контрольную оплату 1 ₽ и принимаю <a href="/offer" target="_blank">публичную оферту</a> и <a href="/privacy" target="_blank">политику обработки персональных данных</a>.</span></label><button id="go" class="btn">Оплатить 1 ₽</button><p id="err"></p></div></main><script>
+const q=new URLSearchParams(location.search),controlToken=q.get('token')||'',TERMS_VERSION='2026-09-24';
+const go=document.getElementById('go'),err=document.getElementById('err'),contact=document.getElementById('contact'),agree=document.getElementById('agree');
+go.onclick=async()=>{
+ if(!controlToken){err.textContent='Контрольная ссылка недействительна.';return}
+ if(!agree.checked){err.textContent='Подтвердите контрольную оплату.';return}
+ go.disabled=true;err.textContent='';
+ try{
+  const r=await fetch('/api/create-payment',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({product:'control',contact:contact.value.trim(),acceptTerms:true,termsVersion:TERMS_VERSION,controlToken})});
+  const d=await r.json();
+  if(d.paymentUrl){location.href=d.paymentUrl;return}
+  err.textContent=d.error==='control_purchase_disabled'?'Контрольная покупка сейчас отключена.':(d.detail||d.error||'Не удалось создать платёж.');
+ }catch(e){err.textContent='Ошибка соединения.'}finally{go.disabled=false}
+};
+</script></body></html>
