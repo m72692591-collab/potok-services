@@ -3,6 +3,7 @@ import{CATALOG,baseUrl,json,readJson,requirePayKey,signOrder,validateContact,yan
 import{initTbankPayment}from'./_tbank.js';
 import{saveTbankPayment}from'./_tbank-payments.js';
 
+const TERMS_VERSION='2026-09-24';
 function provider(){return String(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase()}
 
 async function createYandex(p,contact,orderId,orderPage){
@@ -24,6 +25,9 @@ export default async function handler(req,res){
     const contact=validateContact(b.contact);
     if(!p)return json(res,400,{error:'invalid_product'});
     if(!contact)return json(res,400,{error:'invalid_contact'});
+    const termsAccepted=b.acceptTerms===true&&String(b.termsVersion||'')===TERMS_VERSION;
+    if(!termsAccepted)return json(res,400,{error:'terms_not_accepted'});
+    const termsAcceptedAt=Date.now();
 
     const orderId=`IZN-${p.code.toUpperCase()}-${crypto.randomUUID()}`;
     const token=signOrder(orderId,p.code);
@@ -34,7 +38,7 @@ export default async function handler(req,res){
     if(provider()==='tbank'){
       const init=await initTbankPayment({orderId,amount:p.price,title:p.title,site,orderPage,contact});
       paymentUrl=init.paymentUrl;
-      try{await saveTbankPayment(orderId,{paymentId:init.paymentId,product:p.code,status:init.status})}catch(se){console.error('tbank_payment_map_save_failed',String(se?.message||se))}
+      try{await saveTbankPayment(orderId,{paymentId:init.paymentId,product:p.code,status:init.status,buyerContact:contact,termsAccepted:true,termsVersion:TERMS_VERSION,termsAcceptedAt,offerPath:'/offer',returnPath:'/return',deliveryPath:'/delivery'})}catch(se){console.error('tbank_payment_map_save_failed',String(se?.message||se))}
     }else{
       paymentUrl=await createYandex(p,contact,orderId,orderPage);
     }
