@@ -66,7 +66,9 @@ export async function initTbankPayment({orderId,amount,title,site,orderPage,cont
   const d=await post('Init',payload);
   if(!d?.Success||String(d?.ErrorCode||'')!=='0'||!d?.PaymentURL){
     const e=new Error('tbank_init_failed');
-    e.providerMessage=d?.Message||d?.Details||'';
+    e.providerCode=String(d?.ErrorCode||'');
+    e.providerMessage=String(d?.Message||'');
+    e.providerDetails=String(d?.Details||'');
     throw e;
   }
   return{paymentUrl:d.PaymentURL,paymentId:String(d.PaymentId||''),status:d.Status||'NEW'};
