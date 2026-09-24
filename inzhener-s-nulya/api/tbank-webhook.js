@@ -1,6 +1,7 @@
 import{readJson}from'./_shared.js';
 import{verifyTbankNotification}from'./_tbank.js';
 import{saveTbankPayment}from'./_tbank-payments.js';
+import{ensureNpdReceiptForOrder}from'./_npd.js';
 
 export default async function handler(req,res){
   if(req.method!=='POST'){
@@ -14,8 +15,9 @@ export default async function handler(req,res){
       return;
     }
     if(body?.OrderId&&body?.PaymentId){
+      const orderId=String(body.OrderId);
+      const status=String(body.Status||'').toUpperCase();
       try{
-        const status=String(body.Status||'').toUpperCase();
         const patch={paymentId:String(body.PaymentId),status};
         if(status==='CONFIRMED'){
           patch.confirmedAt=Date.now();
@@ -23,8 +25,21 @@ export default async function handler(req,res){
         }else if(['REFUNDED','PARTIAL_REFUNDED','REVERSED','PARTIAL_REVERSED'].includes(status)){
           patch.npdReceiptStatus='review_refund';
         }
-        await saveTbankPayment(String(body.OrderId),patch);
-      }catch(se){console.error('tbank_webhook_map_save_failed',String(se?.message||se))}
+        await saveTbankPayment(orderId,patch);
+      }catch(se){
+        console.error('tbank_webhook_map_save_failed',String(se?.message||se));
+        res.status(500).setHeader('content-type','text/plain; charset=utf-8').end('RETRY');
+        return;
+      }
+      if(status==='CONFIRMED'){
+        try{
+          await ensureNpdReceiptForOrder(orderId);
+        }catch(ne){
+          console.error('npd_auto_receipt_failed',String(ne?.message||ne),ne?.status||'',ne?.details||'');
+          res.status(503).setHeader('content-type','text/plain; charset=utf-8').end('RETRY');
+          return;
+        }
+      }
     }
     res.status(200).setHeader('content-type','text/plain; charset=utf-8').end('OK');
   }catch(e){
