@@ -1,6 +1,6 @@
 import{CATALOG,fetchYandexOrder,json,safeOrderState,verifyOrderToken}from'./_shared.js';
 import{fetchTbankOrder,safeTbankOrderState,safeTbankState,tbankCall}from'./_tbank.js';
-import{getTbankPayment}from'./_tbank-payments.js';
+import{getTbankPayment,saveTbankPayment}from'./_tbank-payments.js';
 import{getDownloadStatus}from'./_downloads.js';
 
 function provider(){return String(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase()}
@@ -21,6 +21,10 @@ export default async function handler(req,res){
         state=safeTbankState(await tbankCall('GetState',{TerminalKey:process.env.TBANK_TERMINAL_KEY,PaymentId:String(ref.paymentId)}),p,id);
       }else{
         state=safeTbankOrderState(await fetchTbankOrder(id),p);
+        if(state.state==='paid'&&state.paymentId){
+          try{await saveTbankPayment(id,{paymentId:String(state.paymentId),product:pc,status:'CONFIRMED'})}
+          catch(se){console.error('tbank_status_recover_save_failed',String(se?.message||se))}
+        }
       }
     }else{
       state=safeOrderState(await fetchYandexOrder(id),p);
