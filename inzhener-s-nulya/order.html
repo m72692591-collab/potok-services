@@ -14,7 +14,13 @@ async function check(){
         return;
       }
       const dl=d.downloads||{used:0,remaining:3,limit:3,expired:false};
-      let html='<h2>Оплата подтверждена</h2><p class="muted">Продавец применяет НПД. Чек по оплате оформляется через «Мой налог»/уполномоченный банк и передаётся покупателю отдельно.</p>';
+      let html='<h2>Оплата подтверждена</h2>';
+      if(d.receipt&&d.receipt.url){
+        html+='<p class="ok">Чек НПД сформирован автоматически.</p><p><a class="btn" target="_blank" rel="noopener" href="'+d.receipt.url+'">Открыть чек ФНС</a></p>';
+      }else{
+        html+='<p class="muted">Чек НПД формируется автоматически. Страница обновит статус без вашего участия.</p>';
+        setTimeout(check,5000);
+      }
 
       if(dl.expired){
         html+='<p class="ok">Срок скачивания завершён.</p><p class="muted">Окно скачивания действует 24 часа с первого скачивания. Если нужна помощь, свяжитесь с продавцом.</p>';
