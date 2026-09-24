@@ -49,4 +49,5 @@ fetch('/api/public-info').then(r=>r.json()).then(d=>{
 const cookie=document.getElementById('cookie'),cookieOk=document.getElementById('cookieOk');
 if(localStorage.getItem('cookieNotice')!=='ok')cookie.hidden=false;
 cookieOk.onclick=()=>{localStorage.setItem('cookieNotice','ok');cookie.hidden=true};
-</script></body></html>
+</script><!-- env-refresh-after-tbank-credentials -->
+</body></html>
