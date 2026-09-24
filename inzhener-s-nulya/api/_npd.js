@@ -267,3 +267,42 @@ export async function ensureNpdReceiptForOrder(orderId){
     throw e;
   }
 }
+
+export async function cancelNpdReceiptForOrder(orderId,comment='Возврат средств'){
+  const row=await getTbankPayment(orderId);
+  if(!row)return{status:'missing_order'};
+  const p=CATALOG[String(row.product||'')];
+  if(!p||p.controlOnly)return{status:'not_required'};
+  if(!row.npdReceiptUuid)return{status:'no_receipt'};
+  if(row.npdReceiptCancelledAt)return{status:'cancelled',uuid:row.npdReceiptUuid};
+
+  const session=await ensureSession();
+  const now=moscowIso();
+  try{
+    await call('/v1/cancel',{
+      method:'POST',
+      token:session.accessToken,
+      body:{
+        receiptUuid:String(row.npdReceiptUuid),
+        comment:String(comment||'Возврат средств'),
+        operationTime:now,
+        requestTime:now,
+        partnerCode:null
+      }
+    });
+    await saveTbankPayment(orderId,{
+      npdReceiptStatus:'cancelled',
+      npdReceiptCancelledAt:Date.now(),
+      npdReceiptCancelReason:String(comment||'Возврат средств'),
+      npdReceiptError:''
+    });
+    return{status:'cancelled',uuid:String(row.npdReceiptUuid)};
+  }catch(e){
+    await saveTbankPayment(orderId,{
+      npdReceiptStatus:'cancel_pending',
+      npdReceiptError:String(e?.message||e).slice(0,120),
+      npdReceiptLastAttemptAt:Date.now()
+    });
+    throw e;
+  }
+}
