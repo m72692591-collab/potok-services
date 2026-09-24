@@ -1,5 +1,5 @@
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Чеки НПД — Инженер с нуля</title><style>
-body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f6f8fa;color:#111820;margin:0}.w{max-width:900px;margin:32px auto;padding:16px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.card{background:#fff;border:1px solid #dbe2e9;border-radius:18px;padding:18px;margin:12px 0}.muted{color:#64707c;font-size:14px}.ok{color:#0b7a55;font-weight:800}.warn{color:#9a5a00;font-weight:800}.row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:800;background:#ffb000;cursor:pointer}.secondary{background:#fff;border:1px solid #dbe2e9}.receipt{width:100%;box-sizing:border-box;padding:11px;border:1px solid #dbe2e9;border-radius:11px;margin:8px 0}@media(max-width:650px){.row{grid-template-columns:1fr}.btn{width:100%}}</style></head><body><main class="w"><div class="top"><div><h1>Чеки НПД</h1><div class="muted">Закрытый журнал оплаченных заказов. Чек создаётся только через официальный «Мой налог»/Т‑Банк.</div></div><button id="reload" class="btn secondary">Обновить</button></div><div id="status" class="muted"></div><div id="list"></div></main><script>
+body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f6f8fa;color:#111820;margin:0}.w{max-width:900px;margin:32px auto;padding:16px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.card{background:#fff;border:1px solid #dbe2e9;border-radius:18px;padding:18px;margin:12px 0}.muted{color:#64707c;font-size:14px;line-height:1.45}.ok{color:#0b7a55;font-weight:800}.warn{color:#9a5a00;font-weight:800}.bad{color:#a21d1d;font-weight:800}.row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.btn{border:1px solid #dbe2e9;border-radius:12px;padding:11px 14px;font-weight:800;background:#fff;cursor:pointer}@media(max-width:650px){.row{grid-template-columns:1fr}.btn{width:100%}}</style></head><body><main class="w"><div class="top"><div><h1>Автоматические чеки НПД</h1><div class="muted">Закрытый журнал. После CONFIRMED от Т‑Бизнеса система сама регистрирует доход в «Моём налоге» и сохраняет ссылку на чек ФНС.</div></div><button id="reload" class="btn">Обновить</button></div><div id="status" class="muted"></div><div id="list"></div></main><script>
 const token=new URLSearchParams(location.search).get('token')||'';
 const list=document.getElementById('list'),status=document.getElementById('status');
 const fmt=v=>v?new Date(v).toLocaleString('ru-RU'):'—';
@@ -8,27 +8,25 @@ async function load(){
  if(!token){status.textContent='Нет ключа доступа.';return}
  status.textContent='Загружаем…';list.innerHTML='';
  try{
+  const sr=await fetch('/api/npd-status?token='+encodeURIComponent(token),{cache:'no-store'});
+  const sd=await sr.json();
+  const connected=sr.ok&&sd.connected;
   const r=await fetch('/api/npd-pending?token='+encodeURIComponent(token),{cache:'no-store'});
-  const d=await r.json();
-  if(!r.ok)throw new Error(d.error||'Ошибка');
-  status.textContent='Заказов: '+d.orders.length;
+  const d=await r.json();if(!r.ok)throw new Error(d.error||'Ошибка');
+  const issued=d.orders.filter(o=>o.receiptStatus==='issued').length;
+  const waiting=d.orders.length-issued;
+  status.innerHTML=(connected?'<span class="ok">«Мой налог» подключён.</span>':'<span class="bad">«Мой налог» не подключён.</span>')+
+    ' · Оплаченных заказов: '+d.orders.length+' · Чеков выдано: '+issued+(waiting?' · В обработке: '+waiting:'');
   if(!d.orders.length){list.innerHTML='<div class="card">Оплаченных заказов пока нет.</div>';return}
   list.innerHTML=d.orders.map(o=>{
-   const issued=o.receiptStatus==='issued';
-   return '<div class="card" data-order="'+esc(o.orderId)+'"><div class="row"><div><b>'+esc(o.title)+'</b><div class="muted">'+esc(o.orderId)+' · '+o.amount+' ₽ · '+fmt(o.confirmedAt)+'</div><div class="muted">Контакт покупателя: <b>'+esc(o.buyerContact||'не сохранён')+'</b></div></div><div class="'+(issued?'ok':'warn')+'">'+(issued?'Чек оформлен':'НУЖЕН ЧЕК')+'</div></div>'+
-   (issued?'<p><a href="'+esc(o.receiptUrl)+'" target="_blank">Открыть чек НПД</a></p>':
-   '<p class="muted">Создай чек в Т‑Банке или «Мой налог»: покупатель — физлицо, сумма '+o.amount+' ₽, наименование — «'+esc(o.title)+'».</p><input class="receipt" placeholder="Вставь ссылку на готовый чек https://..."><button class="btn mark">Отметить чек оформленным</button>')+'</div>';
+   const issued=o.receiptStatus==='issued'&&o.receiptUrl;
+   const failed=['pending','error'].includes(o.receiptStatus);
+   const cls=issued?'ok':(failed?'bad':'warn');
+   const label=issued?'ЧЕК ВЫДАН':(failed?'ПОВТОРНАЯ ПОПЫТКА':'ФОРМИРУЕТСЯ');
+   return '<div class="card"><div class="row"><div><b>'+esc(o.title)+'</b><div class="muted">'+esc(o.orderId)+' · '+o.amount+' ₽ · '+fmt(o.confirmedAt)+'</div><div class="muted">Контакт покупателя: <b>'+esc(o.buyerContact||'не сохранён')+'</b></div></div><div class="'+cls+'">'+label+'</div></div>'+
+     (issued?'<p><a target="_blank" rel="noopener" href="'+esc(o.receiptUrl)+'">Открыть чек ФНС</a> · создан '+fmt(o.receiptIssuedAt)+'</p>':'<p class="muted">Ручных действий не требуется: система повторит создание автоматически при следующем уведомлении Т‑Бизнеса или открытии страницы заказа.</p>')+'</div>';
   }).join('');
-  document.querySelectorAll('.mark').forEach(btn=>btn.onclick=async()=>{
-    const card=btn.closest('.card'),orderId=card.dataset.order,receiptUrl=card.querySelector('.receipt').value.trim();
-    if(!receiptUrl){alert('Вставь ссылку на чек.');return}
-    btn.disabled=true;btn.textContent='Сохраняем…';
-    try{
-      const r=await fetch('/api/npd-mark',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,orderId,receiptUrl})});
-      const d=await r.json();if(!r.ok)throw new Error(d.error||'Ошибка');await load();
-    }catch(e){alert('Не удалось сохранить: '+e.message);btn.disabled=false;btn.textContent='Отметить чек оформленным'}
-  });
  }catch(e){status.textContent='Ошибка: '+e.message}
 }
-document.getElementById('reload').onclick=load;load();
+document.getElementById('reload').onclick=load;load();setInterval(load,30000);
 </script></body></html>
