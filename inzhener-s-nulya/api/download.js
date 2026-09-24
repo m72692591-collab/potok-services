@@ -4,7 +4,8 @@ import{CATALOG,fetchYandexOrder,json,safeOrderState,verifyOrderToken}from'./_sha
 import{fetchTbankOrder,safeTbankOrderState}from'./_tbank.js';
 import{getTbankPayment}from'./_tbank-payments.js';
 import{safeTbankState,tbankCall}from'./_tbank.js';
-import{blobAuth,reserveDownload}from'./_downloads.js';
+import{reserveDownload}from'./_downloads.js';
+import{blobAuth}from'./_blob-auth.js';
 
 function norm(s){
   return String(s||'').normalize('NFKC').toLowerCase().replace(/[^a-zа-яё0-9]/giu,'');
