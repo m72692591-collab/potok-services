@@ -1,9 +1,8 @@
 import{Readable}from'node:stream';
 import{get,list}from'@vercel/blob';
 import{CATALOG,fetchYandexOrder,json,safeOrderState,verifyOrderToken}from'./_shared.js';
-import{fetchTbankOrder,safeTbankOrderState}from'./_tbank.js';
-import{getTbankPayment}from'./_tbank-payments.js';
-import{safeTbankState,tbankCall}from'./_tbank.js';
+import{fetchTbankOrder,safeTbankOrderState,safeTbankState,tbankCall}from'./_tbank.js';
+import{getTbankPayment,saveTbankPayment}from'./_tbank-payments.js';
 import{reserveDownload}from'./_downloads.js';
 import{blobAuth}from'./_blob-auth.js';
 
@@ -46,9 +45,17 @@ export default async function handler(req,res){
     const provider=(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase();
     let st;
     if(provider==='tbank'){
-      const ref=await getTbankPayment(id);
-      if(!ref?.paymentId)return json(res,409,{state:'pending'});
-      st=safeTbankState(await tbankCall('GetState',{PaymentId:String(ref.paymentId)}),p,id);
+      let ref=await getTbankPayment(id);
+      if(!ref?.paymentId){
+        const order=await fetchTbankOrder(id);
+        const checked=safeTbankOrderState(order,p);
+        if(checked.state!=='paid')return json(res,409,checked);
+        const paymentId=String(checked.paymentId||'');
+        if(!paymentId)return json(res,409,{state:'pending'});
+        try{ref=await saveTbankPayment(id,{paymentId,product:pc,status:'CONFIRMED'})}
+        catch(se){console.error('tbank_recover_map_save_failed',String(se?.message||se));ref={paymentId}}
+      }
+      st=safeTbankState(await tbankCall('GetState',{TerminalKey:process.env.TBANK_TERMINAL_KEY,PaymentId:String(ref.paymentId)}),p,id);
     }else{
       st=safeOrderState(await fetchYandexOrder(id),p);
     }
