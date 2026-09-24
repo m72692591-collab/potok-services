@@ -44,7 +44,7 @@ export default async function handler(req,res){
     if(provider()==='tbank'){
       const init=await initTbankPayment({orderId,amount:p.price,title:p.title,site,orderPage,contact});
       paymentUrl=init.paymentUrl;
-      try{await saveTbankPayment(orderId,{paymentId:init.paymentId,product:p.code,status:init.status,buyerContact:contact,termsAccepted:true,termsVersion:TERMS_VERSION,termsAcceptedAt,offerPath:'/offer',returnPath:'/return',deliveryPath:'/delivery'})}catch(se){console.error('tbank_payment_map_save_failed',String(se?.message||se))}
+      try{await saveTbankPayment(orderId,{paymentId:init.paymentId,product:p.code,status:init.status,buyerContact:contact,buyerType:'individual',createdAt:termsAcceptedAt,termsAccepted:true,termsVersion:TERMS_VERSION,termsAcceptedAt,npdReceiptStatus:p.controlOnly?'not_required':'awaiting_payment',offerPath:'/offer',returnPath:'/return',deliveryPath:'/delivery'})}catch(se){console.error('tbank_payment_map_save_failed',String(se?.message||se))}
     }else{
       paymentUrl=await createYandex(p,contact,orderId,orderPage);
     }
