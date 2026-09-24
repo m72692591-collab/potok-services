@@ -8,10 +8,10 @@ async function load(){
  if(!token){status.textContent='Нет ключа доступа.';return}
  status.textContent='Загружаем…';list.innerHTML='';
  try{
-  const sr=await fetch('/api/npd-status?token='+encodeURIComponent(token),{cache:'no-store'});
+  const sr=await fetch('/api/npd?token='+encodeURIComponent(token)+'&action=status,{cache:'no-store'});
   const sd=await sr.json();
   const connected=sr.ok&&sd.connected;
-  const r=await fetch('/api/npd-pending?token='+encodeURIComponent(token),{cache:'no-store'});
+  const r=await fetch('/api/npd?token='+encodeURIComponent(token)+'&action=orders,{cache:'no-store'});
   const d=await r.json();if(!r.ok)throw new Error(d.error||'Ошибка');
   const issued=d.orders.filter(o=>o.receiptStatus==='issued').length;
   const waiting=d.orders.length-issued;
