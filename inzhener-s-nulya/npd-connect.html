@@ -8,7 +8,7 @@ const status=document.getElementById('status'),connect=document.getElementById('
 async function check(){
  if(!token){status.innerHTML='<span class="err">Нет ключа доступа.</span>';return}
  try{
-  const r=await fetch('/api/npd-status?token='+encodeURIComponent(token),{cache:'no-store'});
+  const r=await fetch('/api/npd?token='+encodeURIComponent(token)+'&action=status,{cache:'no-store'});
   const d=await r.json();
   if(!r.ok)throw new Error(d.error||'Ошибка доступа');
   if(d.connected){status.innerHTML='<span class="ok">«Мой налог» подключён.</span><br>ИНН: '+d.inn+'<br>Автоматические чеки можно включать.';connect.hidden=true}
@@ -18,7 +18,7 @@ async function check(){
 document.getElementById('sms').onclick=async()=>{
  const b=document.getElementById('sms');b.disabled=true;msg.textContent='Отправляем SMS…';
  try{
-  const r=await fetch('/api/npd-connect-start',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,phone:document.getElementById('phone').value})});
+  const r=await fetch('/api/npd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,action:'start',phone:document.getElementById('phone').value})});
   const d=await r.json();if(!r.ok)throw new Error(d.detail||d.error||'Не удалось отправить SMS');
   msg.className='ok';msg.textContent='SMS отправлено. Введи код ниже.';
  }catch(e){msg.className='err';msg.textContent=e.message}finally{b.disabled=false}
@@ -26,7 +26,7 @@ document.getElementById('sms').onclick=async()=>{
 document.getElementById('verify').onclick=async()=>{
  const b=document.getElementById('verify');b.disabled=true;msg.textContent='Подключаем…';
  try{
-  const r=await fetch('/api/npd-connect-verify',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,code:document.getElementById('code').value})});
+  const r=await fetch('/api/npd',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,action:'verify',code:document.getElementById('code').value})});
   const d=await r.json();if(!r.ok)throw new Error(d.detail||d.error||'Не удалось подключить');
   msg.className='ok';msg.textContent='Подключено.';await check();
  }catch(e){msg.className='err';msg.textContent=e.message}finally{b.disabled=false}
