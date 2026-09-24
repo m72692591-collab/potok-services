@@ -169,6 +169,7 @@ export async function initTbankPayment({orderId,amount,title,site,orderPage,cont
     OrderId:String(orderId),
     Description:String(title||'').slice(0,140),
     Language:'ru',
+    NotificationURL:`${site}/api/tbank-webhook`,
     SuccessURL:`${orderPage}&result=success`,
     FailURL:`${orderPage}&result=error`
   };
