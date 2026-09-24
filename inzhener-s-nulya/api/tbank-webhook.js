@@ -1,7 +1,7 @@
 import{readJson}from'./_shared.js';
 import{verifyTbankNotification}from'./_tbank.js';
 import{saveTbankPayment}from'./_tbank-payments.js';
-import{ensureNpdReceiptForOrder}from'./_npd.js';
+import{ensureNpdReceiptForOrder,cancelNpdReceiptForOrder}from'./_npd.js';
 
 export default async function handler(req,res){
   if(req.method!=='POST'){
@@ -22,8 +22,10 @@ export default async function handler(req,res){
         if(status==='CONFIRMED'){
           patch.confirmedAt=Date.now();
           patch.npdReceiptStatus='pending';
-        }else if(['REFUNDED','PARTIAL_REFUNDED','REVERSED','PARTIAL_REVERSED'].includes(status)){
-          patch.npdReceiptStatus='review_refund';
+        }else if(['REFUNDED','REVERSED'].includes(status)){
+          patch.npdReceiptStatus='cancel_pending';
+        }else if(['PARTIAL_REFUNDED','PARTIAL_REVERSED'].includes(status)){
+          patch.npdReceiptStatus='review_partial_refund';
         }
         await saveTbankPayment(orderId,patch);
       }catch(se){
@@ -36,6 +38,14 @@ export default async function handler(req,res){
           await ensureNpdReceiptForOrder(orderId);
         }catch(ne){
           console.error('npd_auto_receipt_failed',String(ne?.message||ne),ne?.status||'',ne?.details||'');
+          res.status(503).setHeader('content-type','text/plain; charset=utf-8').end('RETRY');
+          return;
+        }
+      }else if(['REFUNDED','REVERSED'].includes(status)){
+        try{
+          await cancelNpdReceiptForOrder(orderId,'Возврат средств');
+        }catch(ne){
+          console.error('npd_auto_receipt_cancel_failed',String(ne?.message||ne),ne?.status||'',ne?.details||'');
           res.status(503).setHeader('content-type','text/plain; charset=utf-8').end('RETRY');
           return;
         }
