@@ -104,7 +104,7 @@ export async function startNpdSms(phone){
   const deviceId=crypto.randomBytes(16).toString('hex').slice(0,21);
   const ch=await call('/v2/auth/challenge/sms/start',{
     method:'POST',
-    body:{phone:normalized,requireTpToBeActive:true}
+    body:{phone:normalized,requireTpToBeActive:true,deviceData:{sourceType:'WEB'}}
   });
   if(!ch?.challengeToken)throw new Error('npd_sms_start_failed');
   await saveSecure(PENDING_PATH,{
@@ -140,7 +140,7 @@ export async function verifyNpdSms(code){
   if(Number(p.expiresAt||0)<Date.now())throw new Error('npd_sms_expired');
   const clean=String(code||'').replace(/\D/g,'');
   if(clean.length<4||clean.length>8)throw new Error('invalid_sms_code');
-  let r=await call('/v1/auth/challenge/sms/verify',{
+  let r=await call('/v2/auth/challenge/sms/verify',{
     method:'POST',
     body:{phone:p.phone,code:clean,challengeToken:p.challengeToken,deviceInfo:deviceInfo(p.deviceId)}
   });
@@ -305,4 +305,35 @@ export async function cancelNpdReceiptForOrder(orderId,comment='Возврат �
     });
     throw e;
   }
+}
+
+export async function connectNpdByPassword(username,password){
+  const login=String(username||'').trim();
+  const pass=String(password||'');
+  if(!/^\d{10,12}$/.test(login))throw new Error('invalid_inn');
+  if(!pass)throw new Error('password_required');
+
+  const deviceId=crypto.randomBytes(16).toString('hex').slice(0,21);
+  const r=await call('/v1/auth/lkfl',{
+    method:'POST',
+    body:{username:login,password:pass,deviceInfo:deviceInfo(deviceId)}
+  });
+
+  let session={
+    accessToken:String(r?.token||''),
+    refreshToken:String(r?.refreshToken||''),
+    tokenExpireIn:String(r?.tokenExpireIn||''),
+    inn:String(r?.profile?.inn||login),
+    deviceId,
+    connectedAt:Date.now(),
+    updatedAt:Date.now()
+  };
+  if(!session.refreshToken)throw new Error('npd_missing_refresh_token');
+  if(!session.accessToken)session=await refreshRaw(session);
+  if(!session.inn){
+    const u=await call('/v1/user',{token:session.accessToken});
+    session.inn=String(u?.inn||login);
+  }
+  await saveSecure(SESSION_PATH,session);
+  return{ok:true,inn:session.inn};
 }
