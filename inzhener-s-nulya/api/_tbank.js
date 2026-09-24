@@ -1,4 +1,5 @@
 import crypto from'node:crypto';
+import https from'node:https';
 
 const PROD_API='https://securepay.tinkoff.ru/v2';
 const TEST_API='https://rest-api-test.tinkoff.ru/v2';
@@ -36,16 +37,41 @@ function apiBase(){
 async function post(method,payload){
   const body={...payload};
   body.Token=signTbank(body);
-  const r=await fetch(`${apiBase()}/${method}`,{
-    method:'POST',
-    headers:{'content-type':'application/json'},
-    body:JSON.stringify(body),
-    cache:'no-store'
+  const jsonBody=JSON.stringify(body);
+  const url=new URL(`${apiBase()}/${method}`);
+  const result=await new Promise((resolve,reject)=>{
+    const req=https.request({
+      protocol:url.protocol,
+      hostname:url.hostname,
+      port:url.port||443,
+      path:url.pathname+url.search,
+      method:'POST',
+      headers:{
+        'content-type':'application/json',
+        'content-length':Buffer.byteLength(jsonBody),
+        'user-agent':'inzhener-s-nulya/1.0'
+      },
+      timeout:15000
+    },res=>{
+      let raw='';
+      res.setEncoding('utf8');
+      res.on('data',chunk=>raw+=chunk);
+      res.on('end',()=>resolve({status:res.statusCode||0,raw}));
+    });
+    req.on('timeout',()=>req.destroy(Object.assign(new Error('tbank_connect_timeout'),{code:'ETIMEDOUT'})));
+    req.on('error',err=>{
+      const e=new Error('tbank_transport_error');
+      e.transportCode=String(err?.code||'');
+      e.transportMessage=String(err?.message||'');
+      reject(e);
+    });
+    req.write(jsonBody);
+    req.end();
   });
-  const data=await r.json().catch(()=>({}));
-  if(!r.ok){
+  const data=(()=>{try{return JSON.parse(result.raw||'{}')}catch{return{}}})();
+  if(result.status<200||result.status>=300){
     const e=new Error('tbank_http_error');
-    e.httpStatus=String(r.status||'');
+    e.httpStatus=String(result.status||'');
     e.providerCode=String(data?.ErrorCode||'');
     e.providerMessage=String(data?.Message||'');
     e.providerDetails=String(data?.Details||'');
