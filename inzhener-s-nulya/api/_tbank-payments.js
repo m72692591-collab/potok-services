@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import{get,put}from'@vercel/blob';
-import{blobAuth}from'./_downloads.js';
+import{blobAuth}from'./_blob-auth.js';
 
 function pathFor(orderId){
   const key=crypto.createHash('sha256').update(String(orderId)).digest('hex');
