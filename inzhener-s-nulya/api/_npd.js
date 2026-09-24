@@ -140,7 +140,7 @@ export async function verifyNpdSms(code){
   if(Number(p.expiresAt||0)<Date.now())throw new Error('npd_sms_expired');
   const clean=String(code||'').replace(/\D/g,'');
   if(clean.length<4||clean.length>8)throw new Error('invalid_sms_code');
-  let r=await call('/v2/auth/challenge/sms/verify',{
+  let r=await call('/v1/auth/challenge/sms/verify',{
     method:'POST',
     body:{phone:p.phone,code:clean,challengeToken:p.challengeToken,deviceInfo:deviceInfo(p.deviceId)}
   });
