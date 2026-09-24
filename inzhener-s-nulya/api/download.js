@@ -1,4 +1,5 @@
 import{Readable}from'node:stream';
+import{pipeline}from'node:stream/promises';
 import{get,list}from'@vercel/blob';
 import{CATALOG,fetchYandexOrder,json,safeOrderState,verifyOrderToken}from'./_shared.js';
 import{fetchTbankOrder,safeTbankOrderState,safeTbankState,tbankCall}from'./_tbank.js';
@@ -73,12 +74,15 @@ export default async function handler(req,res){
 
     const filename=pathname.split('/').pop()||'course.zip';
     res.statusCode=200;
-    res.setHeader('Content-Type',result.blob.contentType||'application/zip');
+    res.setHeader('Content-Type',result.blob?.contentType||'application/zip');
     res.setHeader('Content-Disposition',`attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
     res.setHeader('Cache-Control','private, no-store');
     res.setHeader('X-Content-Type-Options','nosniff');
+    const size=Number(result.blob?.size);
+    if(Number.isFinite(size)&&size>0)res.setHeader('Content-Length',String(size));
 
-    Readable.fromWeb(result.stream).pipe(res);
+    stage='stream';
+    await pipeline(Readable.fromWeb(result.stream),res);
   }catch(e){
     const msg=String(e?.message||'unknown');
     console.error('download_unavailable',stage,msg);
