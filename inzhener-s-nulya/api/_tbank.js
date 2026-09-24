@@ -1,6 +1,7 @@
 import crypto from'node:crypto';
 
-const API='https://securepay.tinkoff.ru/v2';
+const PROD_API='https://securepay.tinkoff.ru/v2';
+const TEST_API='https://rest-api-test.tinkoff.ru/v2';
 
 export function tbankEnv(){
   if(String(process.env.TBANK_ENV||'').toLowerCase()==='production')return'production';
@@ -26,10 +27,12 @@ export function signTbank(payload){
   return crypto.createHash('sha256').update(source,'utf8').digest('hex');
 }
 
+function apiBase(){return tbankEnv()==='production'?PROD_API:TEST_API}
+
 async function post(method,payload){
   const body={...payload};
   body.Token=signTbank(body);
-  const r=await fetch(`${API}/${method}`,{
+  const r=await fetch(`${apiBase()}/${method}`,{
     method:'POST',
     headers:{'content-type':'application/json'},
     body:JSON.stringify(body),
