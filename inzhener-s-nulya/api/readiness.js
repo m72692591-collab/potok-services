@@ -1,13 +1,15 @@
 import{json,envName}from'./_shared.js';
 import{tbankEnv}from'./_tbank.js';
+import{npdSessionStatus}from'./_npd.js';
 
-export default function handler(req,res){
+export default async function handler(req,res){
   if(req.method!=='GET')return json(res,405,{error:'method_not_allowed'});
   const provider=(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase();
   const yandexReady=envName()==='production'&&Boolean(process.env.YANDEX_PAY_API_KEY)&&Boolean(process.env.YANDEX_PAY_MERCHANT_ID);
   const terminalKey=String(process.env.TBANK_TERMINAL_KEY||'');
   const tbankPassword=String(process.env.TBANK_PASSWORD||'');
   const tbankReady=Boolean(terminalKey)&&Boolean(tbankPassword);
+  const npd=await npdSessionStatus();
   const checks={
     paymentProvider:provider,
     environment:provider==='tbank'?tbankEnv():envName(),
@@ -26,7 +28,9 @@ export default function handler(req,res){
     addressConfigured:true,
     taxMode:'NPD',
     kktRequired:false,
-    npdReceiptFlow:'official_manual_or_authorized_partner',
+    npdReceiptFlow:'automatic_unofficial_lknpd_api',
+    npdConnected:Boolean(npd.connected),
+    npdAutoReceiptReady:Boolean(npd.connected),
     controlPurchaseEnabled:String(process.env.CONTROL_PURCHASE_ENABLED||'').toLowerCase()==='true',
     controlPurchaseTokenConfigured:Boolean(process.env.CONTROL_PURCHASE_TOKEN),
     tbankCallbackUrl:'/api/tbank-webhook',
@@ -35,6 +39,6 @@ export default function handler(req,res){
   checks.productionPaymentReady=provider==='tbank'
     ?(tbankReady&&checks.tbankTerminalMode==='NON_DEMO'&&tbankEnv()==='production')
     :yandexReady;
-  checks.launchReady=checks.productionPaymentReady&&checks.orderSecretConfigured&&checks.blobConfigured;
+  checks.launchReady=checks.productionPaymentReady&&checks.orderSecretConfigured&&checks.blobConfigured&&checks.npdAutoReceiptReady;
   return json(res,200,checks);
 }
