@@ -24,6 +24,11 @@ export default function handler(req,res){
     emailConfigured:true,
     phoneConfigured:true,
     addressConfigured:true,
+    receiptTaxationConfigured:Boolean(process.env.TBANK_RECEIPT_TAXATION),
+    receiptTaxConfigured:Boolean(process.env.TBANK_RECEIPT_TAX),
+    receiptPaymentObjectConfigured:Boolean(process.env.TBANK_RECEIPT_PAYMENT_OBJECT),
+    controlPurchaseEnabled:String(process.env.CONTROL_PURCHASE_ENABLED||'').toLowerCase()==='true',
+    controlPurchaseTokenConfigured:Boolean(process.env.CONTROL_PURCHASE_TOKEN),
     tbankCallbackUrl:'/api/tbank-webhook',
     yandexCallbackUrl:'/v1/webhook'
   };
