@@ -1,16 +1,11 @@
 import crypto from'node:crypto';
 import{get,put}from'@vercel/blob';
+import{blobAuth}from'./_blob-auth.js';
 
 export const DOWNLOAD_LIMIT=3;
 export const DOWNLOAD_WINDOW_MS=24*60*60*1000;
 
-export function blobAuth(){
-  if(process.env.BLOB_READ_WRITE_TOKEN)return{token:process.env.BLOB_READ_WRITE_TOKEN};
-  if(process.env.BLOB_STORE_ID&&process.env.VERCEL_OIDC_TOKEN){
-    return{storeId:process.env.BLOB_STORE_ID,oidcToken:process.env.VERCEL_OIDC_TOKEN};
-  }
-  return{};
-}
+export{blobAuth}from'./_blob-auth.js';
 
 function metaPath(orderId){
   const key=crypto.createHash('sha256').update(String(orderId)).digest('hex');
