@@ -46,6 +46,8 @@ export default async function handler(req,res){
       body.detail=[e?.providerMessage,e?.providerDetails].filter(Boolean).join(' — ').slice(0,300);
       if(String(process.env.TBANK_ENV||'').toLowerCase()!=='production'){
         body.debug=String(e?.message||'unknown').slice(0,120);
+        body.transportCode=String(e?.transportCode||'');
+        body.transportMessage=String(e?.transportMessage||'').slice(0,160);
       }
     }
     return json(res,cfg?503:500,body);
