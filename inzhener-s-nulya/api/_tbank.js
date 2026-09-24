@@ -217,3 +217,19 @@ export function verifyTbankNotification(payload){
     return a.length===b.length&&crypto.timingSafeEqual(a,b);
   }catch{return false}
 }
+
+
+export async function tbankCall(method,payload){
+  return post(String(method),payload||{});
+}
+
+export function safeTbankState(data,product,orderId){
+  if(!data||data.Success===false)return{state:'not_found'};
+  if(orderId&&data.OrderId&&String(data.OrderId)!==String(orderId))return{state:'mismatch'};
+  const expected=Math.round(Number(product.price)*100);
+  if(data.Amount!==undefined&&Number(data.Amount)!==expected)return{state:'mismatch'};
+  const status=String(data.Status||'').toUpperCase();
+  if(status==='CONFIRMED')return{state:'paid',paymentStatus:status,paymentId:String(data.PaymentId||'')};
+  if(['REJECTED','CANCELED','REVERSED','PARTIAL_REVERSED','REFUNDED','PARTIAL_REFUNDED'].includes(status))return{state:'failed',paymentStatus:status};
+  return{state:'pending',paymentStatus:status||'NEW',paymentId:String(data.PaymentId||'')};
+}
