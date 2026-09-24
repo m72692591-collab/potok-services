@@ -24,7 +24,7 @@ go.onclick=async()=>{
         ?('Т-Бизнес: '+d.detail+(d.providerCode?' (код '+d.providerCode+')':''))
         :(d.providerHttpStatus
           ?('Т-Бизнес отклонил запрос (HTTP '+d.providerHttpStatus+(d.providerCode?', код '+d.providerCode:'')+').')
-          :'Не удалось создать оплату.'));
+          :(d.debug?('Т-Бизнес: '+d.debug):'Не удалось создать оплату.')));
   }catch(e){err.textContent='Ошибка соединения.'}finally{go.disabled=false}
 };
 fetch('/api/readiness').then(r=>r.json()).then(d=>{
