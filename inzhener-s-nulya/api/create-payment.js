@@ -25,6 +25,12 @@ export default async function handler(req,res){
     const contact=validateContact(b.contact);
     if(!p)return json(res,400,{error:'invalid_product'});
     if(!contact)return json(res,400,{error:'invalid_contact'});
+    if(p.controlOnly){
+      const enabled=String(process.env.CONTROL_PURCHASE_ENABLED||'').toLowerCase()==='true';
+      const expected=String(process.env.CONTROL_PURCHASE_TOKEN||'');
+      const supplied=String(b.controlToken||'');
+      if(!enabled||!expected||supplied!==expected)return json(res,404,{error:'control_purchase_disabled'});
+    }
     const termsAccepted=b.acceptTerms===true&&String(b.termsVersion||'')===TERMS_VERSION;
     if(!termsAccepted)return json(res,400,{error:'terms_not_accepted'});
     const termsAcceptedAt=Date.now();
