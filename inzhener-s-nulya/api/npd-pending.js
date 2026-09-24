@@ -1,20 +1,12 @@
-import crypto from'node:crypto';
 import{list,get}from'@vercel/blob';
 import{blobAuth}from'./_blob-auth.js';
 import{CATALOG,json}from'./_shared.js';
+import{npdAdminAuthorized}from'./_npd.js';
 
-function authorized(token){
-  const expected=String(process.env.CONTROL_PURCHASE_TOKEN||'');
-  const supplied=String(token||'');
-  if(!expected||!supplied)return false;
-  const a=crypto.createHash('sha256').update(expected).digest();
-  const b=crypto.createHash('sha256').update(supplied).digest();
-  return crypto.timingSafeEqual(a,b);
-}
 
 export default async function handler(req,res){
   if(req.method!=='GET')return json(res,405,{error:'method_not_allowed'});
-  if(!authorized(req.query.token))return json(res,403,{error:'forbidden'});
+  if(!npdAdminAuthorized(req.query.token))return json(res,403,{error:'forbidden'});
   try{
     const result=await list({prefix:'_orders/tbank/',limit:100,...blobAuth()});
     const blobs=(result.blobs||[]).slice(-60);
@@ -38,7 +30,8 @@ export default async function handler(req,res){
           confirmedAt:Number(r.confirmedAt||r.updatedAt||r.createdAt||0),
           receiptStatus:String(r.npdReceiptStatus||'pending'),
           receiptUrl:String(r.npdReceiptUrl||''),
-          receiptIssuedAt:Number(r.npdReceiptIssuedAt||0)
+          receiptIssuedAt:Number(r.npdReceiptIssuedAt||0),
+          receiptError:String(r.npdReceiptError||'')
         });
       }catch{}
     }
