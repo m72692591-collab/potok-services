@@ -1,6 +1,4 @@
-import{Readable}from'node:stream';
-import{pipeline}from'node:stream/promises';
-import{get,list}from'@vercel/blob';
+import{list,issueSignedToken,presignUrl}from'@vercel/blob';
 import{CATALOG,fetchYandexOrder,json,safeOrderState,verifyOrderToken}from'./_shared.js';
 import{fetchTbankOrder,safeTbankOrderState,safeTbankState,tbankCall}from'./_tbank.js';
 import{getTbankPayment,saveTbankPayment}from'./_tbank-payments.js';
@@ -65,24 +63,30 @@ export default async function handler(req,res){
     stage='blob_resolve';
     const pathname=await resolveBlobPath(pc,p.blobPath);
 
-    stage='blob_get';
-    const result=await get(pathname,{access:'private',useCache:true,...blobAuth()});
-    if(!result||result.statusCode!==200)throw new Error('blob_get_failed');
+    stage='signed_url';
+    const validUntil=Date.now()+2*60*1000;
+    const signedToken=await issueSignedToken({
+      pathname,
+      operations:['get'],
+      validUntil,
+      ...blobAuth()
+    });
+    const{presignedUrl}=await presignUrl(signedToken,{
+      operation:'get',
+      pathname,
+      access:'private',
+      validUntil,
+      useCache:false
+    });
+    if(!presignedUrl)throw new Error('presign_failed');
 
     stage='download_limit';
     await reserveDownload(id);
 
-    const filename=pathname.split('/').pop()||'course.zip';
-    res.statusCode=200;
-    res.setHeader('Content-Type',result.blob?.contentType||'application/zip');
-    res.setHeader('Content-Disposition',`attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.statusCode=302;
+    res.setHeader('Location',presignedUrl);
     res.setHeader('Cache-Control','private, no-store');
-    res.setHeader('X-Content-Type-Options','nosniff');
-    const size=Number(result.blob?.size);
-    if(Number.isFinite(size)&&size>0)res.setHeader('Content-Length',String(size));
-
-    stage='stream';
-    await pipeline(Readable.fromWeb(result.stream),res);
+    res.end();
   }catch(e){
     const msg=String(e?.message||'unknown');
     console.error('download_unavailable',stage,msg);
@@ -92,7 +96,7 @@ export default async function handler(req,res){
     }
     if(msg==='download_limit_reached')return json(res,429,{error:'download_limit_reached'});
     if(msg==='download_window_expired')return json(res,410,{error:'download_window_expired'});
-    const known=['blob_not_found','blob_path_ambiguous','blob_get_failed'];
+    const known=['blob_not_found','blob_path_ambiguous','presign_failed'];
     const code=known.includes(msg)?msg:stage+'_failed';
     return json(res,503,{error:'download_unavailable',code});
   }
