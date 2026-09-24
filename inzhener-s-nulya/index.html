@@ -23,7 +23,7 @@ go.onclick=async()=>{
   }catch(e){err.textContent='Ошибка соединения.'}finally{go.disabled=false}
 };
 fetch('/api/readiness').then(r=>r.json()).then(d=>{
-  paymentsReady=Boolean(d.paymentReady);
+  paymentsReady=Boolean(d.launchReady);
   const m=document.getElementById('mode');
   if(!paymentsReady){
     m.textContent='Онлайн-оплата подключается. До настройки терминала списания не производятся.';
