@@ -37,8 +37,13 @@ export default async function handler(req,res){
     }
     return json(res,200,{paymentUrl});
   }catch(e){
-    console.error('create_payment_failed',String(e?.message||e),e?.providerMessage||'');
+    console.error('create_payment_failed',String(e?.message||e),e?.providerCode||'',e?.providerMessage||'',e?.providerDetails||'');
     const cfg=/TBANK_TERMINAL_KEY|TBANK_PASSWORD|YANDEX_PAY_API_KEY|ORDER_HMAC_SECRET/.test(String(e?.message||e));
-    return json(res,cfg?503:500,{error:cfg?'not_configured':'payment_provider_error'});
+    const body={error:cfg?'not_configured':'payment_provider_error'};
+    if(provider()==='tbank'&&!cfg){
+      body.providerCode=String(e?.providerCode||'');
+      body.detail=[e?.providerMessage,e?.providerDetails].filter(Boolean).join(' — ').slice(0,300);
+    }
+    return json(res,cfg?503:500,body);
   }
 }
