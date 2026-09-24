@@ -56,20 +56,15 @@ async function post(method,payload){
 
 export async function initTbankPayment({orderId,amount,title,site,orderPage,contact}){
   const{terminalKey}=requireTbankCredentials();
-  const data={};
-  if(String(contact||'').includes('@'))data.Email=String(contact);
-  else if(contact)data.Phone=String(contact).replace(/[^+0-9]/g,'');
   const payload={
     TerminalKey:terminalKey,
     Amount:Math.round(Number(amount)*100),
     OrderId:String(orderId),
     Description:String(title||'').slice(0,140),
     Language:'ru',
-    NotificationURL:`${site}/api/tbank-webhook`,
     SuccessURL:`${orderPage}&result=success`,
     FailURL:`${orderPage}&result=error`
   };
-  if(Object.keys(data).length)payload.DATA=data;
   const d=await post('Init',payload);
   if(!d?.Success||String(d?.ErrorCode||'')!=='0'||!d?.PaymentURL){
     const e=new Error('tbank_init_failed');
