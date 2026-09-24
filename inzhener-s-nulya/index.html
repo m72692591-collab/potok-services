@@ -18,7 +18,13 @@ go.onclick=async()=>{
     const r=await fetch('/api/create-payment',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({product,contact:contact.value.trim()})});
     const d=await r.json();
     if(d.paymentUrl){location.href=d.paymentUrl;return}
-    err.textContent=d.error==='not_configured'?'Платёжный терминал ещё не активирован.':(d.detail?('Т-Бизнес: '+d.detail+(d.providerCode?' (код '+d.providerCode+')':'')):'Не удалось создать оплату.');
+    err.textContent=d.error==='not_configured'
+      ?'Платёжный терминал ещё не активирован.'
+      :(d.detail
+        ?('Т-Бизнес: '+d.detail+(d.providerCode?' (код '+d.providerCode+')':''))
+        :(d.providerHttpStatus
+          ?('Т-Бизнес отклонил запрос (HTTP '+d.providerHttpStatus+(d.providerCode?', код '+d.providerCode:'')+').')
+          :'Не удалось создать оплату.'));
   }catch(e){err.textContent='Ошибка соединения.'}finally{go.disabled=false}
 };
 fetch('/api/readiness').then(r=>r.json()).then(d=>{
