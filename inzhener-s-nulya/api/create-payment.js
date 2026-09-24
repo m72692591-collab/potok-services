@@ -1,6 +1,7 @@
 import crypto from'node:crypto';
 import{CATALOG,baseUrl,json,readJson,requirePayKey,signOrder,validateContact,yandexApiBase}from'./_shared.js';
 import{initTbankPayment}from'./_tbank.js';
+import{saveTbankPayment}from'./_tbank-payments.js';
 
 function provider(){return String(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase()}
 
@@ -31,7 +32,9 @@ export default async function handler(req,res){
 
     let paymentUrl;
     if(provider()==='tbank'){
-      paymentUrl=(await initTbankPayment({orderId,amount:p.price,title:p.title,site,orderPage,contact})).paymentUrl;
+      const init=await initTbankPayment({orderId,amount:p.price,title:p.title,site,orderPage,contact});
+      paymentUrl=init.paymentUrl;
+      try{await saveTbankPayment(orderId,{paymentId:init.paymentId,product:p.code,status:init.status})}catch(se){console.error('tbank_payment_map_save_failed',String(se?.message||se))}
     }else{
       paymentUrl=await createYandex(p,contact,orderId,orderPage);
     }
