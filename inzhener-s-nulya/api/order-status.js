@@ -2,6 +2,7 @@ import{CATALOG,fetchYandexOrder,json,safeOrderState,verifyOrderToken}from'./_sha
 import{fetchTbankOrder,safeTbankOrderState,safeTbankState,tbankCall}from'./_tbank.js';
 import{getTbankPayment,saveTbankPayment}from'./_tbank-payments.js';
 import{getDownloadStatus}from'./_downloads.js';
+import{ensureNpdReceiptForOrder}from'./_npd.js';
 
 function provider(){return String(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase()}
 
@@ -30,7 +31,19 @@ export default async function handler(req,res){
       state=safeOrderState(await fetchYandexOrder(id),p);
     }
 
-    if(state.state==='paid')state.downloads=await getDownloadStatus(id);
+    if(state.state==='paid'){
+      state.downloads=await getDownloadStatus(id);
+      if(!p.controlOnly&&provider()==='tbank'){
+        try{
+          const receipt=await ensureNpdReceiptForOrder(id);
+          state.receipt={status:receipt.status,url:receipt.url||''};
+        }catch(ne){
+          console.error('npd_order_status_receipt_failed',String(ne?.message||ne));
+          const ref=await getTbankPayment(id).catch(()=>null);
+          state.receipt={status:String(ref?.npdReceiptStatus||'pending'),url:String(ref?.npdReceiptUrl||'')};
+        }
+      }
+    }
     return json(res,200,state);
   }catch(e){
     console.error('order_status_failed',String(e?.message||e));
