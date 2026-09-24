@@ -161,37 +161,6 @@ async function post(method,payload){
   return data;
 }
 
-function normalizeReceiptPhone(value){
-  const digits=String(value||'').replace(/\\D/g,'');
-  if(digits.length===11&&digits.startsWith('8'))return '+7'+digits.slice(1);
-  if(digits.length===11&&digits.startsWith('7'))return '+'+digits;
-  return digits?'+'+digits:'';
-}
-
-function buildReceipt({amount,title,contact}){
-  const taxation=String(process.env.TBANK_RECEIPT_TAXATION||'').trim();
-  const tax=String(process.env.TBANK_RECEIPT_TAX||'').trim();
-  if(!taxation||!tax)return null;
-  const kopecks=Math.round(Number(amount)*100);
-  const item={
-    Name:String(title||'Цифровой материал').slice(0,128),
-    Price:kopecks,
-    Quantity:1,
-    Amount:kopecks,
-    Tax:tax,
-    PaymentMethod:String(process.env.TBANK_RECEIPT_PAYMENT_METHOD||'full_payment').trim()||'full_payment',
-    PaymentObject:String(process.env.TBANK_RECEIPT_PAYMENT_OBJECT||'another').trim()||'another'
-  };
-  const receipt={Taxation:taxation,Items:[item]};
-  const contactValue=String(contact||'').trim();
-  if(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(contactValue))receipt.Email=contactValue;
-  else{
-    const phone=normalizeReceiptPhone(contactValue);
-    if(phone)receipt.Phone=phone;
-  }
-  return receipt;
-}
-
 export async function initTbankPayment({orderId,amount,title,site,orderPage,contact}){
   const{terminalKey}=requireTbankCredentials();
   const payload={
@@ -203,8 +172,6 @@ export async function initTbankPayment({orderId,amount,title,site,orderPage,cont
     SuccessURL:`${orderPage}&result=success`,
     FailURL:`${orderPage}&result=error`
   };
-  const receipt=buildReceipt({amount,title,contact});
-  if(receipt)payload.Receipt=receipt;
   const d=await post('Init',payload);
   if(!d?.Success||String(d?.ErrorCode||'')!=='0'||!d?.PaymentURL){
     const e=new Error('tbank_init_failed');
