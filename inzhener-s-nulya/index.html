@@ -13,7 +13,6 @@ document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>{product=b.data
 document.getElementById('close').onclick=()=>modal.hidden=true;
 go.onclick=async()=>{
   if(!agree.checked){err.textContent='Подтвердите согласие с офертой и политикой обработки персональных данных.';return}
-  if(!paymentsReady){err.textContent='Онлайн-оплата сейчас подключается. Списания пока не производятся.';return}
   go.disabled=true;err.textContent='';
   try{
     const r=await fetch('/api/create-payment',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({product,contact:contact.value.trim()})});
