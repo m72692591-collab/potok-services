@@ -9,6 +9,10 @@ async function check(){
     const d=await r.json();
 
     if(d.state==='paid'){
+      if(product==='control'){
+        box.innerHTML='<h2>Контрольная покупка успешна</h2><p class="ok">Т-Бизнес подтвердил боевой платёж 1 ₽.</p><p class="muted">Курс по этому техническому заказу не выдаётся. После проверки контрольный режим можно отключить.</p>';
+        return;
+      }
       const dl=d.downloads||{used:0,remaining:3,limit:3,expired:false};
       let html='<h2>Оплата подтверждена</h2>';
 
