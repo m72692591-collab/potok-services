@@ -1,4 +1,4 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Заказ — Инженер с нуля</title><style>body{font-family:system-ui;background:#f5f7f9;color:#111;margin:0}.w{max-width:720px;margin:8vh auto;padding:20px}.b{background:#fff;border:1px solid #dce2e8;border-radius:20px;padding:24px}.btn{border:0;border-radius:13px;padding:14px 18px;font-weight:800;background:#ffb000;cursor:pointer}.btn:disabled{opacity:.55;cursor:default}.ok{font-weight:800}.muted{color:#58636e;font-size:14px;line-height:1.45}</style></head><body><main class="w"><a href="/">← На главную</a><h1>Ваш заказ</h1><div class="b" id="s">Проверяем оплату…</div></main><script>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Заказ — Инженер с нуля</title><style>body{font-family:system-ui;background:#f5f7f9;color:#111;margin:0}.w{max-width:720px;margin:8vh auto;padding:20px}.b{background:#fff;border:1px solid #dce2e8;border-radius:20px;padding:24px}.btn{border:0;border-radius:13px;padding:14px 18px;font-weight:800;background:#ffb000;cursor:pointer}.btn:disabled{opacity:.55;cursor:default}.danger{border:1px solid #c33;background:#fff;color:#a00;margin-left:8px}.ok{font-weight:800}.muted{color:#58636e;font-size:14px;line-height:1.45}</style></head><body><main class="w"><a href="/">← На главную</a><h1>Ваш заказ</h1><div class="b" id="s">Проверяем оплату…</div></main><script>
 const q=new URLSearchParams(location.search),orderId=q.get('orderId'),product=q.get('product'),token=q.get('token'),box=document.getElementById('s');
 
 function fmt(ts){try{return new Date(ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch{return''}}
@@ -19,16 +19,25 @@ async function check(){
       }else{
         html+=dl.used>0?'<p class="ok">Курс скачан.</p>':'<p>Курс готов к выдаче.</p>';
         html+='<p class="muted">Осталось скачиваний: '+dl.remaining+' из '+dl.limit+'.'+(dl.expiresAt?' Доступ до '+fmt(dl.expiresAt)+'.':' После первого скачивания доступ действует 24 часа.')+'</p>';
-        html+='<button class="btn" id="dl">'+(dl.used>0?'Скачать ещё раз':'Скачать курс')+'</button>';
+        html+='<button class="btn" id="dl">'+(dl.used>0?'Скачать ещё раз':'Скачать курс')+'</button><span id="refundSlot"></span>';
       }
 
       box.innerHTML=html;
       const btn=document.getElementById('dl');
       if(btn)btn.onclick=download;
+      addTestRefundButton();
       return;
     }
 
-    if(d.state==='failed'||d.state==='mismatch'||d.state==='forbidden'){
+    if(d.state==='failed'){
+      if(String(d.paymentStatus||'').includes('REFUND')){
+        box.innerHTML='<h2>Возврат выполнен</h2><p>Платёж возвращён. Доступ к скачиванию закрыт.</p>';
+      }else{
+        box.innerHTML='<h2>Платёж отменён</h2><p>Доступ к скачиванию закрыт.</p>';
+      }
+      return;
+    }
+    if(d.state==='mismatch'||d.state==='forbidden'){
       box.innerHTML='<h2>Не удалось подтвердить оплату</h2><p>Вернитесь на главную или свяжитесь с продавцом.</p>';
       return;
     }
@@ -38,6 +47,41 @@ async function check(){
   }catch(e){
     box.textContent='Временная ошибка. Повторяем…';
     setTimeout(check,7000);
+  }
+}
+
+async function addTestRefundButton(){
+  try{
+    const r=await fetch('/api/readiness',{cache:'no-store'});
+    const d=await r.json();
+    if(d.paymentProvider!=='tbank'||d.environment!=='test')return;
+    const slot=document.getElementById('refundSlot');
+    if(!slot)return;
+    slot.innerHTML='<button class="btn danger" id="refundBtn">Тестовый возврат</button>';
+    document.getElementById('refundBtn').onclick=refundTest;
+  }catch{}
+}
+
+async function refundTest(){
+  const btn=document.getElementById('refundBtn');
+  if(btn){btn.disabled=true;btn.textContent='Возвращаем…'}
+  try{
+    const r=await fetch('/api/refund-test',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({orderId,product,token})
+    });
+    const d=await r.json();
+    if(d.ok){
+      box.innerHTML='<h2>Возврат выполнен</h2><p>Тестовый платёж возвращён. Проверяем статус…</p>';
+      setTimeout(check,1800);
+      return;
+    }
+    if(btn){btn.disabled=false;btn.textContent='Тестовый возврат'}
+    alert('Возврат не выполнен: '+(d.detail||d.error||'неизвестная ошибка'));
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Тестовый возврат'}
+    alert('Ошибка соединения при возврате.');
   }
 }
 
