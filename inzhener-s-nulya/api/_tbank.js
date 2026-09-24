@@ -43,7 +43,14 @@ async function post(method,payload){
     cache:'no-store'
   });
   const data=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error('tbank_http_error');
+  if(!r.ok){
+    const e=new Error('tbank_http_error');
+    e.httpStatus=String(r.status||'');
+    e.providerCode=String(data?.ErrorCode||'');
+    e.providerMessage=String(data?.Message||'');
+    e.providerDetails=String(data?.Details||'');
+    throw e;
+  }
   return data;
 }
 
