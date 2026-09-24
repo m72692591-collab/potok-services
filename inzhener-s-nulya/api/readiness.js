@@ -27,6 +27,9 @@ export default function handler(req,res){
     tbankCallbackUrl:'/api/tbank-webhook',
     yandexCallbackUrl:'/v1/webhook'
   };
-  checks.launchReady=checks.paymentCredentialsConfigured&&checks.orderSecretConfigured&&checks.blobConfigured;
+  checks.productionPaymentReady=provider==='tbank'
+    ?(tbankReady&&checks.tbankTerminalMode==='NON_DEMO'&&tbankEnv()==='production')
+    :yandexReady;
+  checks.launchReady=checks.productionPaymentReady&&checks.orderSecretConfigured&&checks.blobConfigured;
   return json(res,200,checks);
 }
