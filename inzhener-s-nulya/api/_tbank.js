@@ -27,7 +27,11 @@ export function signTbank(payload){
   return crypto.createHash('sha256').update(source,'utf8').digest('hex');
 }
 
-function apiBase(){return tbankEnv()==='production'?PROD_API:TEST_API}
+function apiBase(){
+  const terminalKey=String(process.env.TBANK_TERMINAL_KEY||'');
+  if(/DEMO/i.test(terminalKey))return PROD_API;
+  return tbankEnv()==='production'?PROD_API:TEST_API;
+}
 
 async function post(method,payload){
   const body={...payload};
