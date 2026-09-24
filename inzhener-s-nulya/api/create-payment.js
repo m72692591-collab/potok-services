@@ -42,6 +42,7 @@ export default async function handler(req,res){
     const body={error:cfg?'not_configured':'payment_provider_error'};
     if(provider()==='tbank'&&!cfg){
       body.providerCode=String(e?.providerCode||'');
+      body.providerHttpStatus=String(e?.httpStatus||'');
       body.detail=[e?.providerMessage,e?.providerDetails].filter(Boolean).join(' — ').slice(0,300);
     }
     return json(res,cfg?503:500,body);
