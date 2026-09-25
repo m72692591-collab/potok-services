@@ -12,7 +12,7 @@
 
 Деплой-скрипт читает ключи из переменных окружения или из локального файла `inzhener-s-nulya/.env.local`. Файл `.env.local` исключён из Git; пример без секретов лежит в `.env.example`.
 
-Для создания bucket и загрузки объектов достаточно роли `storage.editor`. Для управления публичным доступом, ACL или bucket policy нужен расширенный доступ к настройкам bucket; на текущей проверке `PutBucketPolicy` с ролью `storage.editor` вернул `AccessDenied`.
+Для создания bucket и загрузки объектов достаточно роли `storage.editor`. Для управления bucket policy нужен расширенный доступ: после добавления `storage.admin` `PutBucketPolicy` прошёл. Отдельные публичные флаги/ACL bucket через текущий S3-ключ не изменились: `PutBucketAcl` и `PutObjectAcl` вернули `AccessDenied`; публичное чтение объектов нужно включить в консоли Yandex Cloud.
 
 ## Внесение данных
 

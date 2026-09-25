@@ -38,11 +38,14 @@
 - `node scripts/deploy-yandex-s3.mjs` с `YC_BUCKET=inzhener-s-nulya-1790344532628` → вернул `websiteUrl`.
 - `GET https://inzhener-s-nulya-1790344532628.website.yandexcloud.net` → HTTP 403.
 - `PutBucketPolicy` для публичного `s3:GetObject` → HTTP 403 `AccessDenied`.
+- После добавления роли `storage.admin` `PutBucketPolicy` для публичного `s3:GetObject` выполнился успешно.
+- `PutBucketAcl public-read` и `PutObjectAcl public-read` всё ещё возвращают HTTP 403 `AccessDenied`.
+- Прямые проверки `https://storage.yandexcloud.net/inzhener-s-nulya-1790344532628/index.html` и `https://website.yandexcloud.net/inzhener-s-nulya-1790344532628/index.html` всё ещё возвращают HTTP 403.
 
 ## ОСТАЛОСЬ
 
-1. Добавить сервисному аккаунту `inzhener-site-deploy` роль `storage.admin` на каталог либо вручную открыть публичный доступ на чтение объектов в bucket `inzhener-s-nulya-1790344532628`.
-2. Повторить настройку публичной bucket policy и внешнюю проверку URL.
+1. Вручную включить публичный доступ на чтение объектов в bucket `inzhener-s-nulya-1790344532628` в консоли Yandex Cloud: Object Storage → bucket → Настройки → Общие → публичный доступ к чтению объектов.
+2. Повторить внешнюю проверку URL.
 3. Восстановить управляемый доступ к уже авторизованному браузеру.
 4. Открыть точную организацию в Яндекс Бизнесе и проверить права/подтверждение компании.
 5. Внести данные из `YANDEX_BUSINESS_CONTENT.md`, не запуская магазин/корзину и рекламу.

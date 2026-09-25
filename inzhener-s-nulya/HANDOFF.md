@@ -10,4 +10,4 @@
 
 Локальная статическая сборка проверена командой `npm --prefix inzhener-s-nulya run build:yandex`; она создаёт `dist-yandex` и намеренно показывает закрытие продаж до переноса защищённой оплаты. Публиковать её как магазин нельзя.
 
-2026-09-25 создан bucket `inzhener-s-nulya-1790344532628`, в него загружен `dist-yandex` и включён website hosting. Внешние URL пока дают 403, потому что сервисный аккаунт с `storage.editor` не смог поставить публичную bucket policy: `PutBucketPolicy` вернул `AccessDenied`. Следующий шаг: выдать этому сервисному аккаунту `storage.admin` на каталог или открыть публичный доступ к объектам вручную в консоли.
+2026-09-25 создан bucket `inzhener-s-nulya-1790344532628`, в него загружен `dist-yandex` и включён website hosting. После добавления `storage.admin` публичная bucket policy применена успешно, но внешние URL всё ещё дают 403. `PutBucketAcl public-read` и `PutObjectAcl public-read` возвращают `AccessDenied`. Следующий шаг: вручную включить публичный доступ на чтение объектов в настройках bucket в консоли Yandex Cloud.
