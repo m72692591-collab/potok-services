@@ -1,1 +1,14 @@
-{"name":"inzhener-s-nulya","private":true,"type":"module","dependencies":{"@vercel/blob":"^2.6.1","jose":"^6.1.0"}}
+{
+  "name": "inzhener-s-nulya",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:yandex": "node scripts/build-yandex-static.mjs",
+    "deploy:yandex": "node scripts/deploy-yandex-s3.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.899.0",
+    "@vercel/blob": "^2.6.1",
+    "jose": "^6.1.0"
+  }
+}
