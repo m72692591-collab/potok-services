@@ -5,6 +5,30 @@ import { CreateBucketCommand, HeadBucketCommand, PutBucketWebsiteCommand, PutObj
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-yandex');
+
+async function loadLocalEnv() {
+  const files = [path.join(root, '.env.local'), path.join(root, '..', '.env.local')];
+  for (const file of files) {
+    let content = '';
+    try {
+      content = await readFile(file, 'utf8');
+    } catch {
+      continue;
+    }
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(line);
+      if (!match) continue;
+      const [, key, rawValue] = match;
+      if (process.env[key]) continue;
+      process.env[key] = rawValue.replace(/^['"]|['"]$/g, '');
+    }
+  }
+}
+
+await loadLocalEnv();
+
 const accessKeyId = process.env.YC_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
 const secretAccessKey = process.env.YC_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
 const bucket = process.env.YC_BUCKET || process.env.S3_BUCKET || 'inzhener-s-nulya';
