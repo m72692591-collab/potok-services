@@ -49,7 +49,7 @@ try {
 } catch (error) {
   const code = Number(error?.$metadata?.httpStatusCode || 0);
   if (code && code !== 404) throw error;
-  await client.send(new CreateBucketCommand({ Bucket: bucket, ACL: 'public-read' }));
+  await client.send(new CreateBucketCommand({ Bucket: bucket }));
 }
 
 const contentType = (name) => name.endsWith('.css') ? 'text/css; charset=utf-8'
@@ -64,8 +64,7 @@ for (const name of await readdir(dist)) {
     Key: name,
     Body: await readFile(file),
     ContentType: contentType(name),
-    CacheControl: name === 'index.html' ? 'no-cache' : 'public, max-age=300',
-    ACL: 'public-read'
+    CacheControl: name === 'index.html' ? 'no-cache' : 'public, max-age=300'
   }));
 }
 
