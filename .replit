@@ -1,4 +1,4 @@
-run = "npm --prefix inzhener-s-nulya start"
+run = "npm ci --prefix inzhener-s-nulya --omit=dev && npm --prefix inzhener-s-nulya start"
 
 [deployment]
 build = "npm ci --prefix inzhener-s-nulya --omit=dev"
