@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --test test/*.test.js",
     "build:yandex": "node scripts/build-yandex-static.mjs",
     "deploy:yandex": "node scripts/deploy-yandex-s3.mjs"
   },

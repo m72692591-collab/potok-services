@@ -6,7 +6,7 @@ bundle:{code:'bundle',title:'Инженер с нуля: AutoCAD + Primavera P6'
 control:{code:'control',title:'Контрольная покупка магазина',price:1,controlOnly:true}
 };
 export function json(res,status,body){res.status(status).setHeader('content-type','application/json; charset=utf-8');res.setHeader('cache-control','no-store');res.end(JSON.stringify(body))}
-export async function readJson(req){if(req.body&&typeof req.body==='object')return req.body;let raw='';for await(const c of req)raw+=c;return raw?JSON.parse(raw):{}}
+export async function readJson(req){if(req.body&&typeof req.body==='object')return req.body;let raw='';for await(const c of req){raw+=c;if(Buffer.byteLength(raw)>64*1024)throw new Error('request_body_too_large')}return raw?JSON.parse(raw):{}}
 export function baseUrl(req){const x=(process.env.APP_PUBLIC_URL||'').replace(/\/$/,'');if(x)return x;return `${req.headers['x-forwarded-proto']||'https'}://${req.headers['x-forwarded-host']||req.headers.host}`}
 export function envName(){return process.env.YANDEX_PAY_ENV==='production'?'production':'sandbox'}
 export function yandexApiBase(){return envName()==='production'?'https://pay.yandex.ru/api/merchant/v1':'https://sandbox.pay.yandex.ru/api/merchant/v1'}

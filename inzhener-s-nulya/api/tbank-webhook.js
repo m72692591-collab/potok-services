@@ -1,6 +1,6 @@
-import{readJson}from'./_shared.js';
-import{verifyTbankNotification}from'./_tbank.js';
-import{saveTbankPayment}from'./_tbank-payments.js';
+import{CATALOG,readJson}from'./_shared.js';
+import{safeTbankState,tbankCall,verifyTbankNotification}from'./_tbank.js';
+import{getTbankPayment,saveTbankPayment}from'./_tbank-payments.js';
 import{ensureNpdReceiptForOrder,cancelNpdReceiptForOrder}from'./_npd.js';
 
 export default async function handler(req,res){
@@ -16,9 +16,24 @@ export default async function handler(req,res){
     }
     if(body?.OrderId&&body?.PaymentId){
       const orderId=String(body.OrderId);
-      const status=String(body.Status||'').toUpperCase();
+      const paymentId=String(body.PaymentId);
+      const ref=await getTbankPayment(orderId);
+      const product=CATALOG[String(ref?.product||'')];
+      if(!ref||!product||String(ref.paymentId||'')!==paymentId){
+        console.error('tbank_webhook_unbound_payment',orderId);
+        res.status(500).setHeader('content-type','text/plain; charset=utf-8').end('RETRY');
+        return;
+      }
+      const authoritative=await tbankCall('GetState',{TerminalKey:process.env.TBANK_TERMINAL_KEY,PaymentId:paymentId});
+      const checked=safeTbankState(authoritative,product,orderId,paymentId);
+      if(['not_found','mismatch'].includes(checked.state)){
+        console.error('tbank_webhook_state_mismatch',orderId,checked.state);
+        res.status(500).setHeader('content-type','text/plain; charset=utf-8').end('RETRY');
+        return;
+      }
+      const status=String(checked.paymentStatus||'').toUpperCase();
       try{
-        const patch={paymentId:String(body.PaymentId),status};
+        const patch={paymentId,status};
         if(status==='CONFIRMED'){
           patch.confirmedAt=Date.now();
           patch.npdReceiptStatus='pending';

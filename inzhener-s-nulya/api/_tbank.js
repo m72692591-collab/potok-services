@@ -224,11 +224,14 @@ export async function tbankCall(method,payload){
   return post(String(method),payload||{});
 }
 
-export function safeTbankState(data,product,orderId){
-  if(!data||data.Success===false)return{state:'not_found'};
-  if(orderId&&data.OrderId&&String(data.OrderId)!==String(orderId))return{state:'mismatch'};
+export function safeTbankState(data,product,orderId,paymentId){
+  if(!data||data.Success!==true||String(data.ErrorCode||'')!=='0')return{state:'not_found'};
+  const terminalKey=String(process.env.TBANK_TERMINAL_KEY||'');
+  if(!terminalKey||String(data.TerminalKey||'')!==terminalKey)return{state:'mismatch'};
+  if(!orderId||String(data.OrderId||'')!==String(orderId))return{state:'mismatch'};
+  if(!paymentId||String(data.PaymentId||'')!==String(paymentId))return{state:'mismatch'};
   const expected=Math.round(Number(product.price)*100);
-  if(data.Amount!==undefined&&Number(data.Amount)!==expected)return{state:'mismatch'};
+  if(Number(data.Amount)!==expected)return{state:'mismatch'};
   const status=String(data.Status||'').toUpperCase();
   if(status==='CONFIRMED')return{state:'paid',paymentStatus:status,paymentId:String(data.PaymentId||'')};
   if(['REJECTED','CANCELED','REVERSED','PARTIAL_REVERSED','REFUNDED','PARTIAL_REFUNDED'].includes(status))return{state:'failed',paymentStatus:status};

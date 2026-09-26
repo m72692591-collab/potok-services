@@ -1,0 +1,9 @@
+run = "npm --prefix inzhener-s-nulya start"
+
+[deployment]
+build = "npm ci --prefix inzhener-s-nulya --omit=dev"
+run = "npm --prefix inzhener-s-nulya start"
+
+[[ports]]
+localPort = 3000
+externalPort = 80

@@ -19,7 +19,7 @@ export default async function handler(req,res){
     if(provider()==='tbank'){
       const ref=await getTbankPayment(id);
       if(ref?.paymentId){
-        state=safeTbankState(await tbankCall('GetState',{TerminalKey:process.env.TBANK_TERMINAL_KEY,PaymentId:String(ref.paymentId)}),p,id);
+        state=safeTbankState(await tbankCall('GetState',{TerminalKey:process.env.TBANK_TERMINAL_KEY,PaymentId:String(ref.paymentId)}),p,id,String(ref.paymentId));
       }else{
         state=safeTbankOrderState(await fetchTbankOrder(id),p);
         if(state.state==='paid'&&state.paymentId){

@@ -54,7 +54,7 @@ export default async function handler(req,res){
         try{ref=await saveTbankPayment(id,{paymentId,product:pc,status:'CONFIRMED'})}
         catch(se){console.error('tbank_recover_map_save_failed',String(se?.message||se));ref={paymentId}}
       }
-      st=safeTbankState(await tbankCall('GetState',{TerminalKey:process.env.TBANK_TERMINAL_KEY,PaymentId:String(ref.paymentId)}),p,id);
+      st=safeTbankState(await tbankCall('GetState',{TerminalKey:process.env.TBANK_TERMINAL_KEY,PaymentId:String(ref.paymentId)}),p,id,String(ref.paymentId));
     }else{
       st=safeOrderState(await fetchYandexOrder(id),p);
     }
