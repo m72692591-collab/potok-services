@@ -33,9 +33,13 @@ Replit импортирует корень `potok-services`. Файл `/.replit`
 | `BLOB_READ_WRITE_TOKEN` | доступ к существующему приватному Blob |
 | `NPD_ADMIN_TOKEN` | доступ к административному НПД‑интерфейсу |
 
+В фактическом Vercel‑проекте отдельного `NPD_ADMIN_TOKEN` нет: административную проверку обеспечивает `CONTROL_PURCHASE_TOKEN` как предусмотренный кодом fallback. Также обнаружены резервные `YANDEX_PAY_API_KEY`, `YANDEX_PAY_MERCHANT_ID` и `YANDEX_PAY_ENV=sandbox`.
+
 `CONTROL_PURCHASE_ENABLED=false`. `CONTROL_PURCHASE_TOKEN` не нужен, пока контрольная покупка выключена. Реквизиты продавца имеют действующие значения по умолчанию, но при переносе могут быть заданы соответствующими `BUSINESS_*` переменными.
 
 Секреты Vercel OIDC не переносятся: Replit не получает `VERCEL_OIDC_TOKEN`. Для внешнего runtime нужен обычный `BLOB_READ_WRITE_TOKEN` существующего store.
+
+Vercel‑переменные типа `Sensitive` необратимо скрыты после сохранения. Подтверждённый список: `CONTROL_PURCHASE_TOKEN`, `TBANK_PASSWORD`, `TBANK_TERMINAL_KEY`, `BLOB_READ_WRITE_TOKEN`, `YANDEX_PAY_API_KEY`, `YANDEX_PAY_MERCHANT_ID`, `ORDER_HMAC_SECRET`. Их нужно вводить в Replit Secrets из исходных значений; API Vercel не является источником plaintext. Не заменять `ORDER_HMAC_SECRET` случайным значением: он нужен для совместимости существующих токенов заказов и зашифрованной НПД‑сессии.
 
 ## Публикация
 

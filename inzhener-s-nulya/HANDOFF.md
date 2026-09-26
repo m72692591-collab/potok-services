@@ -6,13 +6,17 @@
 
 Replit App уже создан: `https://replit.com/@m72692591/inzhener-s-nulya`. Dev Preview запускается на порту 3000. Publishing UI зарезервировал `https://inzhener-s-nulya--m72692591.replit.app`; публичная публикация ещё не выполнена. Не включать billing и не покупать домен.
 
-Текущий внешний блокер — обязательная двухфакторная проверка Vercel. Вход через Google уже принят; в оставленной вкладке показано `Open Your Authenticator App` и поле шестизначного кода. Владелец вводит код прямо там, не отправляя его в чат. После успешной 2FA перенести production‑значения в Replit Secrets без вывода в чат или логи. Vercel deployment не изменять.
+Вход и 2FA Vercel пройдены. В проекте найдено 14 пользовательских переменных. Доступные конфигурации перенесены: `YANDEX_PAY_ENV=sandbox` и `BLOB_STORE_ID`; ранее уже были заданы `APP_PUBLIC_URL`, `CONTROL_PURCHASE_ENABLED=false`, `PAYMENT_PROVIDER=tbank`, `TBANK_ENV=production`.
+
+Текущий внешний блокер — семь значений типа Vercel `Sensitive`: `CONTROL_PURCHASE_TOKEN`, `TBANK_PASSWORD`, `TBANK_TERMINAL_KEY`, `BLOB_READ_WRITE_TOKEN`, `YANDEX_PAY_API_KEY`, `YANDEX_PAY_MERCHANT_ID`, `ORDER_HMAC_SECRET`. UI не даёт копировать их, а API `decrypt=true` возвращает только метаданные. Владелец должен ввести исходные значения прямо в Replit Secrets; в чат их не отправлять. Если исходные значения утрачены, нужна отдельная ротация по каждому сервису с сохранением работоспособности Vercel.
 
 Production‑значения переносить только в Replit Secrets. Минимальный набор: `APP_PUBLIC_URL`, `PAYMENT_PROVIDER`, `TBANK_ENV`, `TBANK_TERMINAL_KEY`, `TBANK_PASSWORD`, `ORDER_HMAC_SECRET`, `BLOB_READ_WRITE_TOKEN`, `NPD_ADMIN_TOKEN`; контрольную покупку оставить выключенной. Значения секретов не писать в чат, Git, логи или документы.
 
 `APP_PUBLIC_URL` уже задан как `https://inzhener-s-nulya--m72692591.replit.app`. При публикации убедиться, что `NotificationURL`, `SuccessURL` и `FailURL` Т‑Бизнеса для заказов Replit формируются на Replit и этот путь не переводит покупателя на Vercel.
 
 Будущая рекламная схема владельца: оба сайта остаются в работе; Vercel указывается с пометкой о VPN. В этой задаче рекламу не создавать и не запускать.
+
+Яндекс ранее отказал в проверке из-за недоступности Vercel без VPN. Replit должен стать доступным адресом новой проверки. Наличие sandbox‑ключей не означает одобрения: после публикации потребуется read‑only проверка доступности и отдельная повторная модерация Яндекса.
 
 Не объявлять Google Drive сохранённым: текущий проект использует приватный Vercel Blob, а Drive‑код и Drive‑идентификаторы отсутствуют в ветке и истории. Сначала найти реальный внешний контур в аккаунте; если его нет, документировать, что сохранён фактический приватный Blob.
 
