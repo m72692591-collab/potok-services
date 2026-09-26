@@ -6,7 +6,7 @@
 
 Replit App уже создан: `https://replit.com/@m72692591/inzhener-s-nulya`. Dev Preview запускается на порту 3000. Publishing UI зарезервировал `https://inzhener-s-nulya--m72692591.replit.app`; публичная публикация ещё не выполнена. Не включать billing и не покупать домен.
 
-Текущий внешний блокер — доступ к production‑секретам Vercel: браузерная вкладка требует входа, Vercel CLI и локальная CLI‑авторизация отсутствуют. После входа перенести значения в Replit Secrets без вывода в чат или логи. Vercel deployment не изменять.
+Текущий внешний блокер — обязательная двухфакторная проверка Vercel. Вход через Google уже принят; в оставленной вкладке показано `Open Your Authenticator App` и поле шестизначного кода. Владелец вводит код прямо там, не отправляя его в чат. После успешной 2FA перенести production‑значения в Replit Secrets без вывода в чат или логи. Vercel deployment не изменять.
 
 Production‑значения переносить только в Replit Secrets. Минимальный набор: `APP_PUBLIC_URL`, `PAYMENT_PROVIDER`, `TBANK_ENV`, `TBANK_TERMINAL_KEY`, `TBANK_PASSWORD`, `ORDER_HMAC_SECRET`, `BLOB_READ_WRITE_TOKEN`, `NPD_ADMIN_TOKEN`; контрольную покупку оставить выключенной. Значения секретов не писать в чат, Git, логи или документы.
 
