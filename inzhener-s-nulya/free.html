@@ -17,7 +17,6 @@
 <p class="lead">Не покупайте курс вслепую. Сначала попробуйте две маленькие рабочие задачи: одну в AutoCAD и одну в Primavera P6. Ниже всё уже есть — без регистрации.</p>
 <div class="channels">
 <a id="tg" class="btn dark" hidden>Открыть в Telegram</a>
-<a id="mx" class="btn dark" hidden>Открыть в MAX</a>
 <a class="btn yellow" href="#autocad">Начать здесь</a>
 </div>
 <p id="channelHint" class="mut">Мессенджер не обязателен: весь бесплатный набор доступен на этой странице.</p>
@@ -63,7 +62,6 @@ function withStart(raw,payload){
 }
 fetch('/api/public-info').then(r=>r.json()).then(d=>{
   if(d.telegramBotUrl){const a=document.getElementById('tg');a.href=withStart(d.telegramBotUrl,src);a.hidden=false}
-  if(d.maxBotUrl){const a=document.getElementById('mx');a.href=withStart(d.maxBotUrl,src);a.hidden=false}
 }).catch(()=>{});
 </script>
 </body></html>
