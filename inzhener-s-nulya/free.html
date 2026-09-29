@@ -61,7 +61,7 @@ function withStart(raw,payload){
   try{const u=new URL(raw);u.searchParams.set('start',payload);return u.toString()}catch{return raw}
 }
 fetch('/api/public-info').then(r=>r.json()).then(d=>{
-  if(d.telegramBotUrl){const a=document.getElementById('tg');a.href=withStart(d.telegramBotUrl,src);a.hidden=false}
+  if(d.telegramBotUrl){const a=document.getElementById('tg');a.href=withStart(d.telegramBotUrl,'eng_'+src);a.hidden=false}
 }).catch(()=>{});
 </script>
 </body></html>
