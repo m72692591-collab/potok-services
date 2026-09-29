@@ -1,13 +1,13 @@
-# Funnel v1: Telegram + MAX
+# Funnel v1: Telegram
 
 ## Что уже реализовано в ветке
 
 - Бесплатная страница `/free.html` с двумя практическими заданиями.
 - Главная ведёт холодного пользователя сначала в бесплатный набор, а не сразу на оплату.
 - Telegram webhook: `/api/telegram-webhook`.
-- MAX webhook: `/api/max-webhook`.
-- Один и тот же сценарий AutoCAD / Primavera / оба для обоих мессенджеров.
-- Публичные ссылки ботов берутся из переменных окружения и показываются на бесплатной странице только если настроены.
+- Сценарий AutoCAD / Primavera / оба.
+- Публичная ссылка бота берётся из переменной окружения и показывается на бесплатной странице только после настройки.
+- MAX отложен до отдельного этапа.
 
 ## Переменные окружения
 
@@ -15,41 +15,25 @@
 TELEGRAM_BOT_URL=https://t.me/<bot_username>
 TELEGRAM_BOT_TOKEN=<secret>
 TELEGRAM_WEBHOOK_SECRET=<secret>
-
-MAX_BOT_URL=https://max.ru/<bot_username>
-MAX_BOT_TOKEN=<secret>
-MAX_WEBHOOK_SECRET=<5-256 chars A-Z a-z 0-9 _ ->
 ```
 
-Никогда не коммитить токены в Git.
+Токен и webhook secret никогда не коммитить в Git.
 
-## Telegram activation
+## Активация Telegram
 
-1. Создать бота и получить токен.
-2. Добавить переменные окружения.
-3. Установить webhook на `https://<public-domain>/api/telegram-webhook` с secret token.
-4. Открыть `https://t.me/<bot>?start=vk_clip_01` и проверить кнопки.
-
-## MAX activation
-
-По документации MAX на сентябрь 2026:
-- Платформа доступна организациям, ИП и самозанятым — резидентам РФ.
-- Бот создаётся после верификации профиля и проходит модерацию.
-- Production должен использовать Webhook.
-- API-домен: `https://platform-api2.max.ru`.
-- Webhook рекомендуется защищать `X-Max-Bot-Api-Secret`.
-- Диплинк: `https://max.ru/<botName>?start=<payload>`.
-
-После получения токена подписать бота на:
-`bot_started`, `message_created`, `message_callback`
-с URL:
-`https://<public-domain>/api/max-webhook`.
-
-Важно: актуальная документация MAX также требует доверия сертификату Минцифры при обращениях к `platform-api2.max.ru`. Перед production-подключением надо проверить это именно в выбранном runtime и при необходимости добавить доверенный сертификат безопасным способом.
+1. Создать бота через BotFather и получить токен.
+2. Задать `TELEGRAM_BOT_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` в секретах production-окружения.
+3. Установить webhook на:
+   `https://<public-domain>/api/telegram-webhook`
+   с тем же secret token.
+4. Открыть:
+   `https://t.me/<bot_username>?start=vk_clip_01`
+   и проверить выбор AutoCAD / Primavera / оба.
+5. Проверить переход на `/free.html?src=telegram_bot` и затем на `/#courses`.
 
 ## Следующий коммерческий этап
 
-Товар 490 ₽ пока НЕ включён в каталог оплаты. Причина: сначала нужен законченный цифровой пакет практикума и его приватная выдача. Нельзя принимать оплату за файл, которого ещё нет в закрытом хранилище.
+Товар 490 ₽ пока НЕ включён в каталог оплаты. Сначала нужен законченный цифровой пакет практикума и его приватная выдача. Нельзя принимать оплату за файл, которого ещё нет в закрытом хранилище.
 
 После подготовки пакета:
 1. добавить `starter` в `CATALOG`;
