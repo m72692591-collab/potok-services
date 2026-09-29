@@ -6,7 +6,8 @@
     "start": "node server.js",
     "check": "node --check server.js && node --test test/*.test.js",
     "build:yandex": "node scripts/build-yandex-static.mjs",
-    "deploy:yandex": "node scripts/deploy-yandex-s3.mjs"
+    "deploy:yandex": "node scripts/deploy-yandex-s3.mjs",
+    "telegram:setup": "node scripts/setup-telegram-webhook.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.899.0",
