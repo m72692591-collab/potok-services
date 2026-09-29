@@ -14,7 +14,6 @@ import refundTest from './api/refund-test.js';
 import tbankWebhook from './api/tbank-webhook.js';
 import testLastOrder from './api/test-last-order.js';
 import yandexWebhook from './api/yandex-webhook.js';
-import telegramWebhook from './api/telegram-webhook.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 3000);
@@ -31,7 +30,6 @@ const apiRoutes = new Map([
   ['/api/tbank-webhook', tbankWebhook],
   ['/api/test-last-order', testLastOrder],
   ['/api/yandex-webhook', yandexWebhook],
-  ['/api/telegram-webhook', telegramWebhook],
   ['/v1/webhook', yandexWebhook]
 ]);
 
