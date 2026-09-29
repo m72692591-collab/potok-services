@@ -20,7 +20,6 @@ export default function handler(req,res){
     phone:process.env.BUSINESS_CONTACT_PHONE||'8-969-621-34-70',
     address:process.env.BUSINESS_ADDRESS||'с. Александров Гай, ул. Дома Газовиков, д. 21',
     hours:process.env.BUSINESS_HOURS||'Ежедневно, 09:00–20:00 по московскому времени',
-    telegramBotUrl:safePublicUrl(process.env.TELEGRAM_BOT_URL,['t.me','telegram.me']),
-    maxBotUrl:safePublicUrl(process.env.MAX_BOT_URL,['max.ru'])
+    telegramBotUrl:safePublicUrl(process.env.TELEGRAM_BOT_URL,['t.me','telegram.me'])
   });
 }
