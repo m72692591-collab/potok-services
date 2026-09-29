@@ -8,6 +8,16 @@
 <div id="modal" class="modal" hidden><div class="box"><h2 id="mt">Оформление</h2><p>Укажите email или телефон для оплаты и электронного чека.</p><input id="contact" placeholder="email@example.com или +7…"><label class="consent"><input id="agree" type="checkbox"><span>Я ознакомился и принимаю <a href="/offer" target="_blank">публичную оферту</a>, включая условия предоставления цифрового продукта и возврата денежных средств, а также <a href="/privacy" target="_blank">политику обработки персональных данных</a>. Подтверждаю, что после успешной оплаты доступ к цифровым материалам предоставляется сразу.</span></label><button id="go" class="btn yellow" style="width:100%">Перейти к оплате</button><p id="err"></p><button id="close" class="btn white" style="width:100%">Закрыть</button></div></div><div id="cookie" class="cookie" hidden><span>Сайт использует технические данные и cookie, необходимые для работы, безопасности и оформления заказа. Подробнее — в <a href="/privacy" style="color:#fff">политике обработки персональных данных</a>.</span><button id="cookieOk" class="btn yellow">Понятно</button></div>
 <script>
 const TERMS_VERSION='2026-09-24';
+const ATTR_KEYS=['src','utm_source','utm_medium','utm_campaign','utm_content'];
+function readAttribution(){
+  const q=new URLSearchParams(location.search),fresh={};
+  ATTR_KEYS.forEach(k=>{const v=q.get(k);if(v)fresh[k]=v.slice(0,120)});
+  let stored={};try{stored=JSON.parse(sessionStorage.getItem('engineerAttribution')||'{}')}catch{}
+  const merged={...stored,...fresh};
+  try{sessionStorage.setItem('engineerAttribution',JSON.stringify(merged))}catch{}
+  return merged;
+}
+const attribution=readAttribution();
 let product=null,paymentsReady=false;
 const modal=document.getElementById('modal'),contact=document.getElementById('contact'),err=document.getElementById('err'),go=document.getElementById('go'),agree=document.getElementById('agree'),labels={autocad:'AutoCAD — 1 990 ₽',primavera:'Primavera — 2 490 ₽',bundle:'Комплект — 3 490 ₽'};
 document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>{if(!paymentsReady){alert('Продажи временно закрыты до завершения автоматизации чеков НПД.');return}product=b.dataset.pay;document.getElementById('mt').textContent=labels[product];err.textContent='';modal.hidden=false});
@@ -16,7 +26,7 @@ go.onclick=async()=>{
   if(!agree.checked){err.textContent='Подтвердите согласие с офертой и политикой обработки персональных данных.';return}
   go.disabled=true;err.textContent='';
   try{
-    const r=await fetch('/api/create-payment',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({product,contact:contact.value.trim(),acceptTerms:true,termsVersion:TERMS_VERSION})});
+    const r=await fetch('/api/create-payment',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({product,contact:contact.value.trim(),acceptTerms:true,termsVersion:TERMS_VERSION,attribution})});
     const d=await r.json();
     if(d.paymentUrl){location.href=d.paymentUrl;return}
     if(d.error==='terms_not_accepted'){err.textContent='Для оформления заказа необходимо принять оферту и условия возврата.';return}
