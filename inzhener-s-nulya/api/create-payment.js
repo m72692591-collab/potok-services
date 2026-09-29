@@ -5,6 +5,16 @@ import{saveTbankPayment}from'./_tbank-payments.js';
 
 const TERMS_VERSION='2026-09-24';
 function provider(){return String(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase()}
+function cleanAttribution(value){
+  if(!value||typeof value!=='object')return{};
+  const allowed=['src','utm_source','utm_medium','utm_campaign','utm_content','utm_term','yclid'];
+  const out={};
+  for(const key of allowed){
+    const raw=String(value[key]||'').trim();
+    if(raw)out[key]=raw.replace(/[\u0000-\u001f\u007f]/g,'').slice(0,180);
+  }
+  return out;
+}
 
 async function createYandex(p,contact,orderId,orderPage){
   const item={productId:p.code,title:p.title,quantity:{count:'1'},unitPrice:p.price.toFixed(2),subtotal:p.price.toFixed(2),total:p.price.toFixed(2)};
@@ -34,6 +44,7 @@ export default async function handler(req,res){
     const termsAccepted=b.acceptTerms===true&&String(b.termsVersion||'')===TERMS_VERSION;
     if(!termsAccepted)return json(res,400,{error:'terms_not_accepted'});
     const termsAcceptedAt=Date.now();
+    const trafficAttribution=cleanAttribution(b.attribution);
 
     const orderId=`IZN-${p.code.toUpperCase()}-${crypto.randomUUID()}`;
     const token=signOrder(orderId,p.code);
@@ -44,7 +55,7 @@ export default async function handler(req,res){
     if(provider()==='tbank'){
       const init=await initTbankPayment({orderId,amount:p.price,title:p.title,site,orderPage,contact});
       paymentUrl=init.paymentUrl;
-      try{await saveTbankPayment(orderId,{paymentId:init.paymentId,product:p.code,status:init.status,buyerContact:contact,buyerType:'individual',createdAt:termsAcceptedAt,termsAccepted:true,termsVersion:TERMS_VERSION,termsAcceptedAt,npdReceiptStatus:p.controlOnly?'not_required':'awaiting_payment',offerPath:'/offer',returnPath:'/return',deliveryPath:'/delivery'})}catch(se){console.error('tbank_payment_map_save_failed',String(se?.message||se))}
+      try{await saveTbankPayment(orderId,{paymentId:init.paymentId,product:p.code,status:init.status,buyerContact:contact,buyerType:'individual',createdAt:termsAcceptedAt,termsAccepted:true,termsVersion:TERMS_VERSION,termsAcceptedAt,trafficAttribution,npdReceiptStatus:p.controlOnly?'not_required':'awaiting_payment',offerPath:'/offer',returnPath:'/return',deliveryPath:'/delivery'})}catch(se){console.error('tbank_payment_map_save_failed',String(se?.message||se))}
     }else{
       paymentUrl=await createYandex(p,contact,orderId,orderPage);
     }
