@@ -6,6 +6,13 @@ function secretOk(req){
   if(!expected)return true;
   return String(req.headers['x-telegram-bot-api-secret-token']||'')===expected;
 }
+function safeSource(value){
+  return String(value||'organic').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,36)||'organic';
+}
+function startSource(text){
+  const m=String(text||'').trim().match(/^\/start(?:@[A-Za-z0-9_]+)?(?:\s+([A-Za-z0-9_-]{1,64}))?/);
+  return safeSource(m?.[1]||'organic');
+}
 async function tg(method,body){
   const token=String(process.env.TELEGRAM_BOT_TOKEN||'');
   if(!token)throw new Error('TELEGRAM_BOT_TOKEN is not configured');
@@ -14,17 +21,22 @@ async function tg(method,body){
   if(!r.ok||d.ok===false)throw new Error('telegram_api_failed');
   return d;
 }
-function welcomeMarkup(){
+function welcomeMarkup(src){
   return{inline_keyboard:[
-    [{text:'AutoCAD',callback_data:'f:autocad'},{text:'Primavera P6',callback_data:'f:primavera'}],
-    [{text:'Хочу оба',callback_data:'f:both'}]
+    [{text:'AutoCAD',callback_data:`f:autocad:${src}`},{text:'Primavera P6',callback_data:`f:primavera:${src}`}],
+    [{text:'Хочу оба',callback_data:`f:both:${src}`}]
   ]};
 }
-function doneMarkup(kind,site){
+function lessonMarkup(kind,site,src){
+  const q=encodeURIComponent(`tg_${src}`);
   return{inline_keyboard:[
-    [{text:'Я выполнил задачу',callback_data:`done:${kind}`}],
-    [{text:'Открыть бесплатный набор на сайте',url:`${site}/free.html?src=telegram_bot`}]
+    [{text:'Я выполнил задачу',callback_data:`done:${kind}:${src}`}],
+    [{text:'Открыть бесплатный набор на сайте',url:`${site}/free.html?src=${q}`}]
   ]};
+}
+function courseMarkup(site,src){
+  const q=encodeURIComponent(`tg_${src}`);
+  return{inline_keyboard:[[{text:'Посмотреть курсы',url:`${site}/?src=${q}#courses`}]]};
 }
 export default async function handler(req,res){
   if(req.method!=='POST')return json(res,405,{error:'method_not_allowed'});
@@ -35,20 +47,25 @@ export default async function handler(req,res){
     const cb=u.callback_query;
     if(cb){
       await tg('answerCallbackQuery',{callback_query_id:cb.id});
-      const data=String(cb.data||'');
+      const parts=String(cb.data||'').split(':');
+      const action=parts[0];
+      const kind=normalChoice(parts[1]);
+      const src=safeSource(parts[2]);
       const chatId=cb.message?.chat?.id||cb.from?.id;
-      if(data.startsWith('f:')){
-        const kind=normalChoice(data.slice(2));
-        if(kind)await tg('sendMessage',{chat_id:chatId,text:choices[kind].text,reply_markup:doneMarkup(kind,site)});
-      }else if(data.startsWith('done:')){
-        const kind=normalChoice(data.slice(5));
-        if(kind)await tg('sendMessage',{chat_id:chatId,text:choices[kind].done,reply_markup:{inline_keyboard:[[{text:'Посмотреть курсы',url:`${site}/#courses`}]]}});
+      if(action==='f'&&kind){
+        console.log('telegram_funnel_choice',kind,src);
+        await tg('sendMessage',{chat_id:chatId,text:choices[kind].text,reply_markup:lessonMarkup(kind,site,src)});
+      }else if(action==='done'&&kind){
+        console.log('telegram_funnel_done',kind,src);
+        await tg('sendMessage',{chat_id:chatId,text:choices[kind].done,reply_markup:courseMarkup(site,src)});
       }
       return json(res,200,{ok:true});
     }
     const msg=u.message;
     if(msg?.chat?.id){
-      await tg('sendMessage',{chat_id:msg.chat.id,text:welcomeText,reply_markup:welcomeMarkup()});
+      const src=startSource(msg.text);
+      if(String(msg.text||'').startsWith('/start'))console.log('telegram_funnel_start',src);
+      await tg('sendMessage',{chat_id:msg.chat.id,text:welcomeText,reply_markup:welcomeMarkup(src)});
     }
     return json(res,200,{ok:true});
   }catch(e){
