@@ -9,6 +9,7 @@ import legal from './api/legal.js';
 import npd from './api/npd.js';
 import orderStatus from './api/order-status.js';
 import publicInfo from './api/public-info.js';
+import engineerSupport from './api/engineer-support.js';
 import readiness from './api/readiness.js';
 import refundTest from './api/refund-test.js';
 import tbankWebhook from './api/tbank-webhook.js';
@@ -25,6 +26,7 @@ const apiRoutes = new Map([
   ['/api/npd', npd],
   ['/api/order-status', orderStatus],
   ['/api/public-info', publicInfo],
+  ['/api/engineer-support', engineerSupport],
   ['/api/readiness', readiness],
   ['/api/refund-test', refundTest],
   ['/api/tbank-webhook', tbankWebhook],
@@ -52,7 +54,9 @@ const staticRoutes = new Map([
   ['/npd.html', 'npd.html'],
   ['/npd-connect.html', 'npd-connect.html'],
   ['/free', 'free.html'],
-  ['/free.html', 'free.html']
+  ['/free.html', 'free.html'],
+  ['/support', 'support.html'],
+  ['/support.html', 'support.html']
 ]);
 
 function securityHeaders(res) {
