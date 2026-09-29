@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Бесплатный набор инженера — AutoCAD и Primavera P6</title>
+<meta name="description" content="Бесплатный старт для начинающего инженера: 10 команд AutoCAD, понятная схема Primavera P6 и две короткие практические задачи.">
+<style>
+:root{--bg:#f6f8fa;--ink:#111820;--mut:#64707c;--line:#dbe2e9;--acc:#ffb000;--teal:#0b8275;--nav:#142d49}*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55}.w{width:min(980px,calc(100% - 28px));margin:auto}.top{position:sticky;top:0;background:#f6f8faf2;backdrop-filter:blur(12px);border-bottom:1px solid var(--line);z-index:20}.nav{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{font-weight:900;font-size:20px}.brand i{color:var(--teal);font-style:normal}.btn{border:0;border-radius:14px;padding:13px 17px;font-weight:850;font-size:15px;cursor:pointer;text-decoration:none;display:inline-flex;justify-content:center;align-items:center}.yellow{background:var(--acc);color:#17130a}.dark{background:var(--ink);color:#fff}.white{background:#fff;color:var(--ink);border:1px solid var(--line)}.hero{padding:54px 0 24px}.ey{display:inline-block;padding:7px 11px;border-radius:999px;background:#e6f3f1;color:#08685d;font-weight:800;font-size:13px}.hero h1{font-size:clamp(38px,6vw,62px);line-height:1;letter-spacing:-.045em;margin:16px 0}.lead{font-size:19px;color:var(--mut);max-width:760px}.channels{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.channels [hidden]{display:none}.s{padding:28px 0}.card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:22px;margin:14px 0}.card h2{margin-top:0;font-size:28px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.task{background:#f9fbfc;border:1px solid var(--line);border-radius:16px;padding:16px}.check{font-weight:800;color:var(--teal)}code{background:#eef2f5;padding:2px 6px;border-radius:6px}.cta{background:var(--nav);color:#fff;border-radius:24px;padding:24px;margin:24px 0}.cta p{color:#dbe6ef}.mut{color:var(--mut)}footer{padding:30px 0 50px;color:var(--mut);font-size:13px}@media(max-width:760px){.grid{grid-template-columns:1fr}.hero h1{font-size:42px}.lead{font-size:17px}.nav{align-items:flex-start;padding:10px 0;flex-direction:column}}
+</style>
+</head>
+<body>
+<header class="top"><div class="w nav"><div class="brand">Инженер <i>с нуля</i></div><a class="btn white" href="/">Все курсы</a></div></header>
+<main>
+<section class="hero"><div class="w">
+<span class="ey">Бесплатно · 15–20 минут</span>
+<h1>Набор инженера с нуля</h1>
+<p class="lead">Не покупайте курс вслепую. Сначала попробуйте две маленькие рабочие задачи: одну в AutoCAD и одну в Primavera P6. Ниже всё уже есть — без регистрации.</p>
+<div class="channels">
+<a id="tg" class="btn dark" hidden>Открыть в Telegram</a>
+<a id="mx" class="btn dark" hidden>Открыть в MAX</a>
+<a class="btn yellow" href="#autocad">Начать здесь</a>
+</div>
+<p id="channelHint" class="mut">Мессенджер не обязателен: весь бесплатный набор доступен на этой странице.</p>
+</div></section>
+
+<section class="s" id="autocad"><div class="w">
+<div class="card"><h2>1. AutoCAD: 10 команд первого дня</h2>
+<div class="grid">
+<div class="task"><b>Навигация</b><p><code>ZOOM</code> — приблизить/отдалить. <code>PAN</code> — перемещаться по чертежу.</p></div>
+<div class="task"><b>Проверка</b><p><code>DIST</code> — измерить расстояние. <code>AREA</code> — площадь. <code>ID</code> — координата точки.</p></div>
+<div class="task"><b>Редактирование</b><p><code>MOVE</code>, <code>COPY</code>, <code>TRIM</code> — переместить, копировать, обрезать.</p></div>
+<div class="task"><b>Оформление</b><p><code>DIM</code> — размер. <code>LAYER</code> — слои.</p></div>
+</div>
+<h3>Мини-задача</h3>
+<ol><li>Откройте любой учебный DWG.</li><li>Найдите два характерных угла объекта.</li><li>Измерьте расстояние между ними через <code>DIST</code>.</li><li>Поставьте размер через <code>DIM</code>.</li><li>Проверьте, на каком слое находится размер.</li></ol>
+<p class="check">Готово, если вы можете сами назвать фактическое расстояние и показать его размером на чертеже.</p>
+</div>
+</div></section>
+
+<section class="s" id="primavera"><div class="w">
+<div class="card"><h2>2. Primavera P6 без сложных слов</h2>
+<p><b>WBS</b> — это дерево частей проекта. <b>Activity</b> — конкретная работа. <b>Duration</b> — сколько она длится. <b>Relationship</b> — какая работа от какой зависит.</p>
+<div class="grid">
+<div class="task"><b>Пример WBS</b><p>Проект → Подготовка → Земляные работы → Монтаж → Испытания → Сдача.</p></div>
+<div class="task"><b>Пример связи</b><p>«Монтаж» не начинается, пока не закончена «Подготовка». Это простая логика Finish-to-Start.</p></div>
+</div>
+<h3>Мини-задача</h3>
+<ol><li>Создайте проект.</li><li>Сделайте WBS из трёх блоков: Подготовка, Выполнение, Сдача.</li><li>Добавьте по одной работе в каждый блок.</li><li>Задайте длительности 2, 5 и 1 день.</li><li>Свяжите их последовательно.</li></ol>
+<p class="check">Готово, если изменение длительности средней работы двигает дату окончания проекта.</p>
+</div>
+</div></section>
+
+<section class="s"><div class="w">
+<div class="cta"><h2>Получилось?</h2><p>Значит, вам уже не нужно «учить программу целиком». Следующий шаг — идти по рабочим задачам последовательно. Для этого есть три полных курса самообучения.</p><a class="btn yellow" href="/#courses">Посмотреть курсы и цены</a></div>
+<div class="card"><h2>Что выбрать</h2><p><b>AutoCAD — 1 990 ₽:</b> если основная задача — чертежи, размеры, координаты и исполнительная документация.</p><p><b>Primavera P6 — 2 490 ₽:</b> если нужно календарно-сетевое планирование строительства.</p><p><b>Комплект — 3 490 ₽:</b> если нужны оба направления.</p><p class="mut">Это самостоятельные учебные материалы. Они не являются программой повышения квалификации, не выдают государственный диплом и не обещают трудоустройство или определённый доход.</p></div>
+</div></section>
+</main>
+<footer><div class="w">«Инженер с нуля». Учебные материалы для самостоятельного обучения. <a href="/offer">Оферта</a> · <a href="/privacy">Персональные данные</a> · <a href="/contacts">Контакты</a></div></footer>
+<script>
+const src=(new URLSearchParams(location.search).get('src')||'site_free').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80);
+function withStart(raw,payload){
+  try{const u=new URL(raw);u.searchParams.set('start',payload);return u.toString()}catch{return raw}
+}
+fetch('/api/public-info').then(r=>r.json()).then(d=>{
+  if(d.telegramBotUrl){const a=document.getElementById('tg');a.href=withStart(d.telegramBotUrl,src);a.hidden=false}
+  if(d.maxBotUrl){const a=document.getElementById('mx');a.href=withStart(d.maxBotUrl,src);a.hidden=false}
+}).catch(()=>{});
+</script>
+</body></html>
