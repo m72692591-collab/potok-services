@@ -42,7 +42,7 @@ Bot API `getMe` подтвердил `@AnimaTactusGrowthBot` (ID 8161855271). Ч
 
 Перед включением: сохранить `ENGINEER_TELEGRAM_BOT_TOKEN` и случайный `ENGINEER_TELEGRAM_WEBHOOK_SECRET` длиной 32–256 символов в секретах production; проверить, что других webhook/poller для GrowthBot нет; задеплоить функцию; только после этого вызвать `setWebhook` с URL `https://inzhener-s-nulya.vercel.app/api/engineer-support?channel=telegram` и параметром `secret_token`. Затем проверить `getWebhookInfo` и живые ответы команд. Ответ 200 от webhook сам по себе не доказывает доставку сообщения.
 
-Указанный для аватара файл `/mnt/data/engineer_avatar_512.jpg` на этом ПК не найден. Существующий `brand-avatar.svg` содержит повреждённый JPEG, поэтому аватар не менялся.
+1 октября 2026 аватар из исходного файла `engineer_avatar_512.jpg` установлен через `setMyProfilePhoto`. Telegram подтвердил вызов; верхний `file_unique_id` сменился с `AQADshdrGzb5SEsB` на `AQADYBprG_bp8EkB`. Скачанное затем фото профиля визуально сверено с исходным. Исходный JPEG SHA-256: `3a4d7ecc235c4247c02f1fcaadb9b6eb2d7a4a0ce687912fb6279a2ab863eee9`.
 
 ## Следующий коммерческий этап
 
