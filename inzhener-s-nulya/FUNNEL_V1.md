@@ -21,13 +21,13 @@
 
 Подготовленный обработчик поддерживает `/start eng_<source>`, `/autocad`, `/primavera`, `/courses`, `/support` и `/access`. Старые `/engineer*` остаются псевдонимами. Отдельный локальный тестовый poller «Точки роста» использует этот же бот; его нельзя запускать одновременно с webhook. Каналы и бот `@AnimaTactusPartner_bot` не затрагиваются.
 
-## Состояние GrowthBot на 2026-09-30
+## Состояние GrowthBot на 2026-10-01
 
 Bot API `getMe` подтвердил `@AnimaTactusGrowthBot` (ID 8161855271). Через Bot API заданы имя «Инженер с нуля», оба описания и шесть команд; значения проверены запросами `getMy*`. Токен сохранён только локально в Windows DPAPI, не в Git.
 
-В существующей функции `/api/engineer-support?channel=telegram` подготовлен обработчик Telegram webhook с отдельным секретным заголовком и проверкой `getMe`. Он выключен флагом `ENGINEER_TELEGRAM_ENABLED=0`, пока не подтверждены облачное развёртывание и единственный consumer. Сайт уже возвращает `https://t.me/AnimaTactusGrowthBot` из `/api/public-info`.
+В существующей функции `/api/engineer-support?channel=telegram` развёрнут обработчик Telegram webhook с отдельным секретным заголовком и проверкой `getMe`. В production он включён флагом `ENGINEER_TELEGRAM_ENABLED=1`; оба секрета сохранены как Vercel Secret только для production. Сайт возвращает `https://t.me/AnimaTactusGrowthBot` из `/api/public-info`.
 
-Перед включением: сохранить `ENGINEER_TELEGRAM_BOT_TOKEN` и случайный `ENGINEER_TELEGRAM_WEBHOOK_SECRET` длиной 32–256 символов в секретах production; проверить, что других webhook/poller для GrowthBot нет; задеплоить функцию; только после этого вызвать `setWebhook` с URL `https://inzhener-s-nulya.vercel.app/api/engineer-support?channel=telegram` и параметром `secret_token`. Затем проверить `getWebhookInfo` и живые ответы команд. Ответ 200 от webhook сам по себе не доказывает доставку сообщения.
+Telegram `setWebhook` подтвердил URL `https://inzhener-s-nulya.vercel.app/api/engineer-support?channel=telegram` с `secret_token`; `getWebhookInfo` вернул тот же URL, нулевую очередь и без ошибок доставки. До регистрации проверены отсутствие прежнего webhook, локального процесса, службы и запланированной задачи poller. Защищённые запросы к production вернули ответы на шесть команд, а запрос без секретного заголовка получил HTTP 403. В авторизованном чате Telegram Web K 1 октября получены ответы на `/start eng_smoke`, `/autocad`, `/primavera`, `/courses`, `/support` и `/access`. Ссылка из ответа `/start` открыла `/free.html?src=tg_smoke`. После живого обмена очередь webhook осталась нулевой, ошибок доставки нет.
 
 1 октября 2026 аватар из исходного файла `engineer_avatar_512.jpg` установлен через `setMyProfilePhoto`. Telegram подтвердил вызов; верхний `file_unique_id` сменился с `AQADshdrGzb5SEsB` на `AQADYBprG_bp8EkB`. Скачанное затем фото профиля визуально сверено с исходным. Исходный JPEG SHA-256: `3a4d7ecc235c4247c02f1fcaadb9b6eb2d7a4a0ce687912fb6279a2ab863eee9`.
 
