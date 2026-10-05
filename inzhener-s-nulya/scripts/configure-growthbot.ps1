@@ -88,6 +88,7 @@ Invoke-Tg -Token $token -Method 'setMyDescription' -Body @{ description='Пра�
 
 $commands = @(
     @{ command='start'; description='Начать' },
+    @{ command='starter'; description='Практикум 490 ₽' },
     @{ command='autocad'; description='Бесплатный старт AutoCAD' },
     @{ command='primavera'; description='Бесплатный старт Primavera P6' },
     @{ command='courses'; description='Курсы и цены' },

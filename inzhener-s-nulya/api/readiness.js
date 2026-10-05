@@ -18,6 +18,7 @@ async function productFilesStatus(){
     const files={};
     for(const [code,p] of Object.entries(CATALOG)){
       if(p.controlOnly)continue;
+      if(p.inlineDelivery){files[code]=true;continue}
       files[code]=names.includes(p.blobPath)||normalized.has(norm(p.blobPath));
     }
     return{ok:Object.values(files).every(Boolean),files};

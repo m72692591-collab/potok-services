@@ -115,16 +115,17 @@ export function engineerTelegramReply(update) {
   const courses = url('/', '#courses');
   const support = url('/support');
   const replies = {
-    '/start': `Инженер с нуля\n\nНачните с бесплатных заданий по AutoCAD и Primavera P6: ${free}\n\n/autocad — AutoCAD\n/primavera — Primavera P6\n/courses — курсы и цены\n/support — задать вопрос\n/access — доступ после оплаты`,
+    '/start': `Инженер с нуля\n\nНачните бесплатно: ${free}\n\n/starter — практикум за 490 ₽\n/autocad — AutoCAD\n/primavera — Primavera P6\n/courses — курсы и цены\n/support — задать вопрос\n/access — доступ после оплаты`,
     '/autocad': `Бесплатный старт AutoCAD: команды и практическое задание.\n${url('/free.html', '#autocad')}`,
     '/primavera': `Бесплатный старт Primavera P6: структура проекта, работы и связи.\n${url('/free.html', '#primavera')}`,
-    '/courses': `AutoCAD — ${CATALOG.autocad.price.toLocaleString('ru-RU')} ₽\nPrimavera P6 — ${CATALOG.primavera.price.toLocaleString('ru-RU')} ₽\nКомплект — ${CATALOG.bundle.price.toLocaleString('ru-RU')} ₽\n\nСодержание курсов и покупка: ${courses}`,
+    '/starter': `«Первый рабочий день инженера» — AutoCAD + Primavera P6 за ${CATALOG.starter.price.toLocaleString('ru-RU')} ₽. Покупка и автоматическая выдача: ${courses}`,
+    '/courses': `Первый рабочий день инженера — ${CATALOG.starter.price.toLocaleString('ru-RU')} ₽\nAutoCAD — ${CATALOG.autocad.price.toLocaleString('ru-RU')} ₽\nPrimavera P6 — ${CATALOG.primavera.price.toLocaleString('ru-RU')} ₽\nКомплект — ${CATALOG.bundle.price.toLocaleString('ru-RU')} ₽\n\nСодержание и покупка: ${courses}`,
     '/support': `Напишите вопрос про AutoCAD, Primavera P6, выбор курса или получение материалов. Здесь отвечает автоматический помощник.\n\nПомощник на сайте: ${support}`,
     '/access': `После оплаты вернитесь на страницу своего заказа: там появится защищённая ссылка на материалы. Если деньги списаны, а доступа нет, не оплачивайте повторно. Порядок обращения: ${url('/contacts')}\n\nНе отправляйте сюда данные карты или секретную ссылку заказа.`
   };
   const aliases = { '/engineer': '/start', '/engineer_autocad': '/autocad', '/engineer_primavera': '/primavera', '/engineer_both': '/courses' };
   const text = replies[aliases[command] || command] || (command.startsWith('/')
-    ? 'Выберите /start, /autocad, /primavera, /courses, /support или /access.'
+    ? 'Выберите /start, /starter, /autocad, /primavera, /courses, /support или /access.'
     : engineerSupportAnswer(input).answer);
   return { method: 'sendMessage', chat_id: m.chat.id, text,
     link_preview_options: { is_disabled: true } };

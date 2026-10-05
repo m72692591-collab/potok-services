@@ -14,6 +14,7 @@ Description:
 
 Commands:
 - `/start` — Начать
+- `/starter` — Практикум 490 ₽
 - `/autocad` — Бесплатный старт AutoCAD
 - `/primavera` — Бесплатный старт Primavera P6
 - `/courses` — Курсы и цены

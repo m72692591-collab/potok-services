@@ -26,7 +26,7 @@ test('serves storefront and all legal pages', async () => {
 
 test('keeps canonical prices in the storefront', async () => {
   const html = await (await get('/')).text();
-  for (const price of ['1 990 ₽', '2 490 ₽', '3 490 ₽']) assert.match(html, new RegExp(price));
+  for (const price of ['490 ₽', '1 990 ₽', '2 490 ₽', '3 490 ₽']) assert.match(html, new RegExp(price));
 });
 
 test('exposes API handlers and hides source files', async () => {

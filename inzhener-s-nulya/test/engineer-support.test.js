@@ -19,3 +19,8 @@ test('does not invent unsupported answer',()=>{
   assert.equal(r.category,'fallback');
   assert.match(r.answer,/не придумывать/i);
 });
+
+test('answers starter price',()=>{
+  const r=engineerSupportAnswer('Что есть за 490 рублей?');
+  assert.match(r.answer,/490 ₽/);
+});
