@@ -2,18 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { engineerTelegramReply as reply, engineerTelegramWebhook as webhook, engineerTelegramSecret, ensureEngineerTelegramWebhook } from '../api/_engineer-telegram.js';
 const update = text => ({ update_id: 42, message: { text, chat: { id: 123, type: 'private' }, from: { id: 123, is_bot: false } } });
-test('all requested commands route to the engineering site including paid starter', () => {
-  for (const command of ['/start eng_smoke', '/starter', '/autocad', '/primavera', '/courses', '/support', '/access']) {
+test('Telegram is the primary landing and paid buttons go straight to checkout', () => {
+  const start = reply(update('/start eng_vk_launch'));
+  assert.equal(start.chat_id, 123);
+  assert.match(start.text, /сайт открывать не нужно/i);
+  assert.ok(start.reply_markup?.keyboard?.length >= 4);
+  assert.doesNotMatch(start.text, /Partner_bot/);
+
+  for (const command of ['/starter', '/autocad', '/primavera', '/courses', '/support', '/access']) {
     const r = reply(update(command));
     assert.equal(r.chat_id, 123);
-    assert.match(r.text, /https:\/\/inzhener-s-nulya.vercel.app\//);
     assert.doesNotMatch(r.text, /Partner_bot/);
   }
-  assert.match(reply(update('/start eng_smoke')).text, /src=tg_smoke/);
-  assert.match(reply(update('/autocad')).text, /#autocad/);
-  assert.match(reply(update('/primavera')).text, /#primavera/);
+  assert.match(reply(update('/starter')).text, /buy=starter/);
   assert.match(reply(update('/starter')).text, /490 ₽/);
-  assert.match(reply(update('/courses')).text, /490 ₽/);
+  assert.match(reply(update('📐 AutoCAD 1 990 ₽')).text, /buy=autocad/);
+  assert.match(reply(update('📅 Primavera P6 2 490 ₽')).text, /buy=primavera/);
+  assert.match(reply(update('📦 Комплект 3 490 ₽')).text, /buy=bundle/);
+  assert.match(reply(update('🎁 Бесплатный старт')).text, /DIST/);
 });
 test('ignores other bots, groups, forged chat identity and non-text updates', () => {
   assert.equal(reply(update('/start@AnimaTactusPartner_bot')), null);
@@ -43,7 +49,7 @@ test('verified GrowthBot returns Telegram webhook reply', async () => {
   const fetchImpl = async () => ({ ok: true, json: async () => ({ ok: true, result: { username: 'AnimaTactusGrowthBot' } }) });
   const r = await run({ fetchImpl });
   assert.equal(r.code, 200); assert.equal(r.body.method, 'sendMessage');
-  assert.match(r.body.text, /src=tg_smoke/);
+  assert.match(r.body.text, /Инженер с нуля/);
 });
 
 test('derives a stable webhook secret from existing order secret', () => {
