@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { engineerTelegramReply as reply, engineerTelegramWebhook as webhook } from '../api/_engineer-telegram.js';
+import { engineerTelegramReply as reply, engineerTelegramWebhook as webhook, engineerTelegramSecret, ensureEngineerTelegramWebhook } from '../api/_engineer-telegram.js';
 const update = text => ({ update_id: 42, message: { text, chat: { id: 123, type: 'private' }, from: { id: 123, is_bot: false } } });
 test('all requested commands route to the engineering site without paid starter', () => {
   for (const command of ['/start eng_smoke', '/autocad', '/primavera', '/courses', '/support', '/access']) {
@@ -42,4 +42,32 @@ test('verified GrowthBot returns Telegram webhook reply', async () => {
   const r = await run({ fetchImpl });
   assert.equal(r.code, 200); assert.equal(r.body.method, 'sendMessage');
   assert.match(r.body.text, /src=tg_smoke/);
+});
+
+test('derives a stable webhook secret from existing order secret', () => {
+  const e={ ORDER_HMAC_SECRET:'q'.repeat(48), TELEGRAM_BOT_TOKEN:'123:'+'z'.repeat(30) };
+  const a=engineerTelegramSecret(e), b=engineerTelegramSecret(e);
+  assert.match(a,/^[A-Za-z0-9_-]{32,256}$/);
+  assert.equal(a,b);
+});
+
+test('readiness helper self-configures GrowthBot webhook once', async () => {
+  const e={ ORDER_HMAC_SECRET:'q'.repeat(48), TELEGRAM_BOT_TOKEN:'123:'+'z'.repeat(30) };
+  const calls=[];
+  const fetchImpl=async (url,opts={})=>{
+    calls.push({url,opts});
+    if(url.endsWith('/getMe')) return {ok:true,json:async()=>({ok:true,result:{username:'AnimaTactusGrowthBot'}})};
+    if(url.endsWith('/getWebhookInfo')){
+      const configured=calls.some(x=>x.url.endsWith('/setWebhook'));
+      return {ok:true,json:async()=>({ok:true,result:{url:configured?'https://example.test/api/engineer-support?channel=telegram':'',pending_update_count:0}})};
+    }
+    if(url.endsWith('/setWebhook')) return {ok:true,json:async()=>({ok:true,result:true})};
+    throw new Error('unexpected');
+  };
+  const req={headers:{host:'example.test','x-forwarded-proto':'https'}};
+  const r=await ensureEngineerTelegramWebhook(req,{env:e,fetchImpl});
+  assert.equal(r.identityVerified,true);
+  assert.equal(r.webhookMatchesExpected,true);
+  assert.equal(r.autoConfigured,true);
+  assert.equal(calls.filter(x=>x.url.endsWith('/setWebhook')).length,1);
 });
