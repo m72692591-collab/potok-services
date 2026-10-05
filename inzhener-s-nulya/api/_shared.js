@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 export const CATALOG={
+starter:{code:'starter',title:'Первый рабочий день инженера — AutoCAD + Primavera P6',price:490,inlineDelivery:true},
 autocad:{code:'autocad',title:'AutoCAD для стройки и исполнительной документации — 21 день, версия 2.0',price:1990,blobPath:'Инженер_с_нуля_AutoCAD_21_день_v2.0.zip'},
 primavera:{code:'primavera',title:'Primavera P6 с нуля для строительства — 14 дней',price:2490,blobPath:'Инженер_с_нуля_Primavera_P6_14_дней_v1.0.zip'},
 bundle:{code:'bundle',title:'Инженер с нуля: AutoCAD + Primavera P6',price:3490,blobPath:'Инженер_с_нуля_КОМПЛЕКТ_AutoCAD_Primavera.zip'},
