@@ -1,9 +1,15 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { engineerSupportAnswer } from './_engineer-support.js';
 import { CATALOG, json, readJson } from './_shared.js';
 
 export const GROWTH_BOT = 'AnimaTactusGrowthBot';
 const SITE = 'https://inzhener-s-nulya.vercel.app';
+
+function derivedWebhookSecret(env=process.env){
+  const base=String(env.ORDER_HMAC_SECRET||'');
+  if(base.length<32)return'';
+  return createHmac('sha256',base).update('telegram-webhook:AnimaTactusGrowthBot').digest('base64url');
+}
 
 // Pure reply builder: usable by the existing consumer without starting a poller.
 export function engineerTelegramReply(update) {
@@ -42,7 +48,7 @@ export async function engineerTelegramWebhook(req, res, {
 } = {}) {
   const secret = env.ENGINEER_TELEGRAM_WEBHOOK_SECRET
     || env.TELEGRAM_WEBHOOK_SECRET
-    || '';
+    || derivedWebhookSecret(env);
   const supplied = req.headers?.['x-telegram-bot-api-secret-token'];
   if (!/^[A-Za-z0-9_-]{32,256}$/.test(secret) || typeof supplied !== 'string')
     return json(res, 403, { error: 'forbidden' });
