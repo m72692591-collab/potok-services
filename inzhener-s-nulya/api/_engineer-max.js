@@ -33,7 +33,7 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=fe
   const token=engineerMaxToken(env);
   const secret=engineerMaxSecret(env);
   const expected=engineerMaxWebhookUrl(req);
-  const out={tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false};
+  const out={tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false};
   if(!out.tokenConfigured||!out.webhookSecretConfigured)return out;
   try{
     const meRes=await fetchImpl(API+'/me',{headers:{Authorization:token},signal:AbortSignal.timeout(8000)});
@@ -42,6 +42,30 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=fe
     if(!out.identityVerified)return out;
     out.username=String(me?.username||'');
     if(out.username)out.botUrl='https://max.ru/'+out.username;
+    out.profileDescriptionConfigured=Boolean(String(me?.description||'').trim());
+    out.profileAvatarConfigured=Boolean(String(me?.avatar_url||me?.full_avatar_url||'').trim());
+
+    const desiredCommands=[
+      {name:'start',description:'Начать'},
+      {name:'free',description:'Бесплатный старт'},
+      {name:'courses',description:'Курсы и цены'},
+      {name:'support',description:'Задать вопрос'}
+    ];
+    const currentCommands=Array.isArray(me?.commands)?me.commands.map(x=>({
+      name:String(x?.name||''),description:String(x?.description||'')
+    })):[];
+    out.commandsConfigured=JSON.stringify(currentCommands)===JSON.stringify(desiredCommands);
+    if(!out.commandsConfigured){
+      const cmdRes=await fetchImpl(API+'/me/commands',{
+        method:'PATCH',headers:auth(token),
+        body:JSON.stringify({commands:desiredCommands}),
+        signal:AbortSignal.timeout(8000)
+      });
+      if(cmdRes.ok){
+        out.commandsConfigured=true;
+        out.commandsAutoConfigured=true;
+      }
+    }
 
     const subsRes=await fetchImpl(API+'/subscriptions',{headers:{Authorization:token},signal:AbortSignal.timeout(8000)});
     const subs=await subsRes.json().catch(()=>[]);
