@@ -2,16 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { engineerTelegramReply as reply, engineerTelegramWebhook as webhook, engineerTelegramSecret, ensureEngineerTelegramWebhook } from '../api/_engineer-telegram.js';
 const update = text => ({ update_id: 42, message: { text, chat: { id: 123, type: 'private' }, from: { id: 123, is_bot: false } } });
-test('all requested commands route to the engineering site without paid starter', () => {
-  for (const command of ['/start eng_smoke', '/autocad', '/primavera', '/courses', '/support', '/access']) {
+test('all requested commands route to the engineering site including paid starter', () => {
+  for (const command of ['/start eng_smoke', '/starter', '/autocad', '/primavera', '/courses', '/support', '/access']) {
     const r = reply(update(command));
     assert.equal(r.chat_id, 123);
     assert.match(r.text, /https:\/\/inzhener-s-nulya.vercel.app\//);
-    assert.doesNotMatch(r.text, /(?:^|\n)490 ₽|Partner_bot/);
+    assert.doesNotMatch(r.text, /Partner_bot/);
   }
   assert.match(reply(update('/start eng_smoke')).text, /src=tg_smoke/);
   assert.match(reply(update('/autocad')).text, /#autocad/);
   assert.match(reply(update('/primavera')).text, /#primavera/);
+  assert.match(reply(update('/starter')).text, /490 ₽/);
+  assert.match(reply(update('/courses')).text, /490 ₽/);
 });
 test('ignores other bots, groups, forged chat identity and non-text updates', () => {
   assert.equal(reply(update('/start@AnimaTactusPartner_bot')), null);
