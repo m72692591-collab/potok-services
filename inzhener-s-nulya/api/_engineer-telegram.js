@@ -124,7 +124,7 @@ export function engineerTelegramReply(update) {
   };
   const aliases = { '/engineer': '/start', '/engineer_autocad': '/autocad', '/engineer_primavera': '/primavera', '/engineer_both': '/courses' };
   const text = replies[aliases[command] || command] || (command.startsWith('/')
-    ? 'Выберите /start, /autocad, /primavera, /courses, /support или /access.'
+    ? 'Выберите /start, /starter, /autocad, /primavera, /courses, /support или /access.'
     : engineerSupportAnswer(input).answer);
   return { method: 'sendMessage', chat_id: m.chat.id, text,
     link_preview_options: { is_disabled: true } };
