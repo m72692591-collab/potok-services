@@ -1,0 +1,39 @@
+name: Engineer production readiness probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/engineer-readiness-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe production readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://inzhener-s-nulya.vercel.app/api/readiness"
+          body="$(curl --fail --silent --show-error --max-time 20 "$URL")"
+          echo "$body" | jq '{
+            paymentProvider,
+            environment,
+            paymentCredentialsConfigured,
+            productionPaymentReady,
+            orderSecretConfigured,
+            blobConfigured,
+            productFilesReady,
+            productFiles,
+            npdConnected,
+            npdAutoReceiptReady,
+            commerceReady,
+            telegramReady,
+            launchReady,
+            fullAutomationReady
+          }'
+          test "$(echo "$body" | jq -r '.launchReady')" = "true"
