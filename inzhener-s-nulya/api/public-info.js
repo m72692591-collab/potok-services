@@ -1,5 +1,6 @@
 import{json}from'./_shared.js';
 import{engineerTelegramToken}from'./_engineer-telegram.js';
+import{engineerMaxToken}from'./_engineer-max.js';
 
 function safePublicUrl(value,allowedHosts){
   const raw=String(value||'').trim();
@@ -24,7 +25,7 @@ export default function handler(req,res){
     telegramBotUrl:/^\d+:[A-Za-z0-9_-]{25,}$/.test(engineerTelegramToken())
       ?safePublicUrl(process.env.TELEGRAM_BOT_URL||'https://t.me/AnimaTactusGrowthBot',['t.me','telegram.me'])
       :'',
-    maxBotUrl:safePublicUrl(process.env.MAX_BOT_URL,['max.ru']),
+    maxBotUrl:engineerMaxToken()?safePublicUrl(process.env.MAX_BOT_URL,['max.ru']):'',
     yandexMetrikaId:/^\d{4,12}$/.test(String(process.env.YANDEX_METRIKA_ID||''))?String(process.env.YANDEX_METRIKA_ID):''
   });
 }

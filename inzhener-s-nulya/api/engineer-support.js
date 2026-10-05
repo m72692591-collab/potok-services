@@ -4,6 +4,7 @@ import{json,readJson}from'./_shared.js';
 import{blobAuth}from'./_blob-auth.js';
 import{engineerSupportAnswer}from'./_engineer-support.js';
 import{engineerTelegramWebhook}from'./_engineer-telegram.js';
+import{engineerMaxWebhook}from'./_engineer-max.js';
 
 const EVENT_NAMES=new Set([
   'page_view','free_start_click','telegram_click','max_click','support_open',
@@ -45,6 +46,7 @@ async function recordEvent(req,res){
 export default async function handler(req,res){
   if(req.method!=='POST')return json(res,405,{error:'method_not_allowed'});
   if(req.query?.channel==='telegram')return engineerTelegramWebhook(req,res);
+  if(req.query?.channel==='max')return engineerMaxWebhook(req,res);
   if(req.query?.channel==='event')return recordEvent(req,res);
   try{
     const body=await readJson(req);
