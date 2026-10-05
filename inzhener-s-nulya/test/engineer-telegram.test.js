@@ -20,15 +20,15 @@ test('ignores other bots, groups, forged chat identity and non-text updates', ()
     const u = update('/start'); mutate(u); assert.equal(reply(u), null);
   }
 });
-const env = { ENGINEER_TELEGRAM_ENABLED: '1', ENGINEER_TELEGRAM_WEBHOOK_SECRET: 'a'.repeat(40), ENGINEER_TELEGRAM_BOT_TOKEN: '123:' + 'x'.repeat(30) };
+const env = { ENGINEER_TELEGRAM_WEBHOOK_SECRET: 'a'.repeat(40), ENGINEER_TELEGRAM_BOT_TOKEN: '123:' + 'x'.repeat(30) };
 async function run(options = {}, headers = { 'x-telegram-bot-api-secret-token': env.ENGINEER_TELEGRAM_WEBHOOK_SECRET }) {
   const res = { status(n) { this.code = n; return this; }, setHeader() {}, end(s) { this.body = JSON.parse(s); } };
   await webhook({ body: update('/start eng_smoke'), headers }, res, { env, ...options });
   return res;
 }
-test('disabled or unauthenticated calls never reach Telegram', async () => {
+test('unconfigured or unauthenticated calls never reach Telegram', async () => {
   const fetchImpl = () => { throw new Error('must not call'); };
-  assert.equal((await run({ env: {}, fetchImpl })).code, 503);
+  assert.equal((await run({ env: {}, fetchImpl })).code, 403);
   assert.equal((await run({ fetchImpl }, {})).code, 403);
   assert.equal((await run({ fetchImpl }, { 'x-telegram-bot-api-secret-token': 'wrong' })).code, 403);
 });
