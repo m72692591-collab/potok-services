@@ -18,6 +18,7 @@ function readAttribution(){
   return merged;
 }
 const attribution=readAttribution();
+const requestedBuy=new URLSearchParams(location.search).get('buy');
 let product=null,paymentsReady=false;
 const modal=document.getElementById('modal'),contact=document.getElementById('contact'),err=document.getElementById('err'),go=document.getElementById('go'),agree=document.getElementById('agree'),labels={starter:'Первый рабочий день инженера — 490 ₽',autocad:'AutoCAD — 1 990 ₽',primavera:'Primavera — 2 490 ₽',bundle:'Комплект — 3 490 ₽'};
 document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>{if(!paymentsReady){alert('Продажи временно закрыты до завершения автоматизации чеков НПД.');return}product=b.dataset.pay;document.getElementById('mt').textContent=labels[product];err.textContent='';modal.hidden=false});
@@ -44,6 +45,13 @@ go.onclick=async()=>{
 };
 fetch('/api/readiness').then(r=>r.json()).then(d=>{
   paymentsReady=Boolean(d.launchReady);
+  if(paymentsReady&&requestedBuy&&labels[requestedBuy]){
+    product=requestedBuy;
+    document.getElementById('mt').textContent=labels[product];
+    err.textContent='';
+    modal.hidden=false;
+    if(window.engineerTrack)window.engineerTrack('checkout_open',{product});
+  }
   const m=document.getElementById('mode');
   if(!paymentsReady){
     m.textContent=d.npdConnected===false?'Продажи временно закрыты: завершаем автоматическое формирование чеков НПД.':'Онлайн-оплата временно недоступна до завершения настройки.';
