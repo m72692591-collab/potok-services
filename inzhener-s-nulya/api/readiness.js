@@ -94,7 +94,7 @@ export default async function handler(req,res){
     &&telegram.webhookSecretConfigured
     &&telegram.identityVerified
     &&telegram.webhookMatchesExpected;
-  checks.maxReady=Boolean(max.tokenConfigured&&max.webhookSecretConfigured&&max.identityVerified&&max.webhookMatchesExpected);
+  checks.maxReady=Boolean(max.tokenConfigured&&max.webhookSecretConfigured&&max.identityVerified&&max.commandsConfigured&&max.webhookMatchesExpected);
   checks.launchReady=checks.commerceReady;
   checks.fullAutomationReady=checks.commerceReady&&checks.telegramReady;
   checks.multiMessengerReady=checks.fullAutomationReady&&checks.maxReady;
