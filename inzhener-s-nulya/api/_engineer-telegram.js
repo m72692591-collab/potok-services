@@ -15,6 +15,14 @@ export function engineerTelegramToken(env=process.env) {
   ).trim();
 }
 
+function derivedWebhookSecret(env=process.env){
+  const base=String(env.ORDER_HMAC_SECRET||'');
+  if(base.length<32)return'';
+  return createHmac('sha256',base)
+    .update('telegram-webhook:AnimaTactusGrowthBot')
+    .digest('base64url');
+}
+
 export function engineerTelegramSecret(env=process.env) {
   const explicit = String(
     env.ENGINEER_TELEGRAM_WEBHOOK_SECRET
@@ -22,11 +30,7 @@ export function engineerTelegramSecret(env=process.env) {
     || ''
   ).trim();
   if (/^[A-Za-z0-9_-]{32,256}$/.test(explicit)) return explicit;
-  const token = engineerTelegramToken(env);
-  if (!/^\d+:[A-Za-z0-9_-]{25,}$/.test(token)) return '';
-  return createHash('sha256')
-    .update('engineer-telegram-webhook:' + token)
-    .digest('base64url');
+  return derivedWebhookSecret(env);
 }
 
 export function engineerTelegramWebhookUrl(req) {
@@ -94,12 +98,6 @@ export async function ensureEngineerTelegramWebhook(req,{env=process.env,fetchIm
   }
 }
 
-function derivedWebhookSecret(env=process.env){
-  const base=String(env.ORDER_HMAC_SECRET||'');
-  if(base.length<32)return'';
-  return createHmac('sha256',base).update('telegram-webhook:AnimaTactusGrowthBot').digest('base64url');
-}
-
 // Pure reply builder: usable by the existing consumer without starting a poller.
 export function engineerTelegramReply(update) {
   const m = update?.message;
@@ -135,9 +133,7 @@ export function engineerTelegramReply(update) {
 export async function engineerTelegramWebhook(req, res, {
   env = process.env, fetchImpl = fetch
 } = {}) {
-  const secret = env.ENGINEER_TELEGRAM_WEBHOOK_SECRET
-    || env.TELEGRAM_WEBHOOK_SECRET
-    || derivedWebhookSecret(env);
+  const secret = engineerTelegramSecret(env);
   const supplied = req.headers?.['x-telegram-bot-api-secret-token'];
   if (!/^[A-Za-z0-9_-]{32,256}$/.test(secret) || typeof supplied !== 'string')
     return json(res, 403, { error: 'forbidden' });
