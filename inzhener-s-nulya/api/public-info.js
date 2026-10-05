@@ -21,6 +21,7 @@ export default function handler(req,res){
     address:process.env.BUSINESS_ADDRESS||'с. Александров Гай, ул. Дома Газовиков, д. 21',
     hours:process.env.BUSINESS_HOURS||'Ежедневно, 09:00–20:00 по московскому времени',
     telegramBotUrl:safePublicUrl(process.env.TELEGRAM_BOT_URL||'https://t.me/AnimaTactusGrowthBot',['t.me','telegram.me']),
-    maxBotUrl:safePublicUrl(process.env.MAX_BOT_URL,['max.ru'])
+    maxBotUrl:safePublicUrl(process.env.MAX_BOT_URL,['max.ru']),
+    yandexMetrikaId:/^\d{4,12}$/.test(String(process.env.YANDEX_METRIKA_ID||''))?String(process.env.YANDEX_METRIKA_ID):''
   });
 }
