@@ -26,7 +26,7 @@ async function check(){
       if(dl.expired){
         html+='<p class="ok">Срок скачивания завершён.</p><p class="muted">Окно скачивания действует 24 часа с первого скачивания. Если нужна помощь, свяжитесь с продавцом.</p>';
       }else if(dl.remaining<=0){
-        html+='<p class="ok">Курс скачан.</p><p class="muted">Использованы все '+dl.limit+' скачивания. Если файл не сохранился, свяжитесь с продавцом.</p>';
+        html+='<p class="ok">Материал скачан.</p><p class="muted">Использованы все '+dl.limit+' скачивания. Если файл не сохранился, свяжитесь с продавцом.</p>';
       }else{
         html+=dl.used>0?'<p class="ok">Материал скачан.</p>':'<p>Материал готов к выдаче.</p>';
         html+='<p class="muted">Осталось скачиваний: '+dl.remaining+' из '+dl.limit+'.'+(dl.expiresAt?' Доступ до '+fmt(dl.expiresAt)+'.':' После первого скачивания доступ действует 24 часа.')+'</p>';
@@ -36,7 +36,6 @@ async function check(){
       box.innerHTML=html;
       const btn=document.getElementById('dl');
       if(btn)btn.onclick=download;
-      if(product==='starter'){html=box.innerHTML;}
       addTestRefundButton();
       return;
     }
