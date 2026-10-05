@@ -35,7 +35,9 @@ test('MAX readiness can configure webhook after identity check',async()=>{
   const calls=[];
   const fetchImpl=async(url,opts={})=>{
     calls.push({url,opts});
-    if(url.endsWith('/me'))return{ok:true,json:async()=>({user_id:1,username:'id640100982708_bot',is_bot:true})};
+    if(url.endsWith('/me'))return{ok:true,json:async()=>({user_id:1,username:'id640100982708_bot',is_bot:true,description:'Инженер с нуля',avatar_url:'https://example.test/a.png',commands:[]})};
+    if(url.endsWith('/me/commands')&&opts.method==='PATCH')
+      return{ok:true,json:async()=>({success:true})};
     if(url.endsWith('/subscriptions')&&(!opts.method||opts.method==='GET'))
       return{ok:true,json:async()=>[]};
     if(url.endsWith('/subscriptions')&&opts.method==='POST')
@@ -47,5 +49,9 @@ test('MAX readiness can configure webhook after identity check',async()=>{
   assert.equal(r.identityVerified,true);
   assert.equal(r.webhookMatchesExpected,true);
   assert.equal(r.autoConfigured,true);
+  assert.equal(r.commandsConfigured,true);
+  assert.equal(r.commandsAutoConfigured,true);
+  assert.equal(r.profileDescriptionConfigured,true);
+  assert.equal(r.profileAvatarConfigured,true);
   assert.equal(r.botUrl,'https://max.ru/id640100982708_bot');
 });
