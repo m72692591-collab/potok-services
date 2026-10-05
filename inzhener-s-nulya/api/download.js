@@ -4,6 +4,7 @@ import{fetchTbankOrder,safeTbankOrderState,safeTbankState,tbankCall}from'./_tban
 import{getTbankPayment,saveTbankPayment}from'./_tbank-payments.js';
 import{reserveDownload}from'./_downloads.js';
 import{blobAuth}from'./_blob-auth.js';
+import{starterProductHtml}from'./_starter-product.js';
 
 function norm(s){
   return String(s||'').normalize('NFKC').toLowerCase().replace(/[^a-zа-яё0-9]/giu,'');
@@ -59,6 +60,18 @@ export default async function handler(req,res){
       st=safeOrderState(await fetchYandexOrder(id),p);
     }
     if(st.state!=='paid')return json(res,409,st);
+
+    if(p.inlineDelivery&&pc==='starter'){
+      stage='download_limit';
+      await reserveDownload(id);
+      const html=starterProductHtml(id);
+      res.statusCode=200;
+      res.setHeader('Content-Type','text/html; charset=utf-8');
+      res.setHeader('Content-Disposition','attachment; filename="first-engineer-workday.html"');
+      res.setHeader('Cache-Control','private, no-store');
+      res.end(html);
+      return;
+    }
 
     stage='blob_resolve';
     const pathname=await resolveBlobPath(pc,p.blobPath);
