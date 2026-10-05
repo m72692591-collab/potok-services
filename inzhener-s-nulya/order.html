@@ -1,5 +1,5 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Заказ — Инженер с нуля</title><style>body{font-family:system-ui;background:#f5f7f9;color:#111;margin:0}.w{max-width:720px;margin:8vh auto;padding:20px}.b{background:#fff;border:1px solid #dce2e8;border-radius:20px;padding:24px}.btn{border:0;border-radius:13px;padding:14px 18px;font-weight:800;background:#ffb000;cursor:pointer}.btn:disabled{opacity:.55;cursor:default}.danger{border:1px solid #c33;background:#fff;color:#a00;margin-left:8px}.ok{font-weight:800}.muted{color:#58636e;font-size:14px;line-height:1.45}</style></head><body><main class="w"><a href="/">← На главную</a><h1>Ваш заказ</h1><div class="b" id="s">Проверяем оплату…</div></main><script>
-const q=new URLSearchParams(location.search),orderId=q.get('orderId'),product=q.get('product'),token=q.get('token'),box=document.getElementById('s');
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Заказ — Инженер с нуля</title><style>body{font-family:system-ui;background:#f5f7f9;color:#111;margin:0}.w{max-width:720px;margin:8vh auto;padding:20px}.b{background:#fff;border:1px solid #dce2e8;border-radius:20px;padding:24px}.btn{border:0;border-radius:13px;padding:14px 18px;font-weight:800;background:#ffb000;cursor:pointer}.btn:disabled{opacity:.55;cursor:default}.danger{border:1px solid #c33;background:#fff;color:#a00;margin-left:8px}.ok{font-weight:800}.muted{color:#58636e;font-size:14px;line-height:1.45}</style><script defer src="/analytics.js"></script></head><body><main class="w"><a href="/">← На главную</a><h1>Ваш заказ</h1><div class="b" id="s">Проверяем оплату…</div></main><script>
+const q=new URLSearchParams(location.search),orderId=q.get('orderId'),product=q.get('product'),token=q.get('token'),box=document.getElementById('s');let paidTracked=false;
 
 function fmt(ts){try{return new Date(ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch{return''}}
 
@@ -9,6 +9,7 @@ async function check(){
     const d=await r.json();
 
     if(d.state==='paid'){
+      if(!paidTracked){paidTracked=true;if(window.engineerTrack)window.engineerTrack('order_paid',{product});}
       if(product==='control'){
         box.innerHTML='<h2>Контрольная покупка успешна</h2><p class="ok">Т-Бизнес подтвердил боевой платёж 1 ₽.</p><p class="muted">Курс по этому техническому заказу не выдаётся. После проверки контрольный режим можно отключить.</p>';
         return;
@@ -96,6 +97,7 @@ async function refundTest(){
 }
 
 function download(){
+  if(window.engineerTrack)window.engineerTrack('download_start',{product});
   const btn=document.getElementById('dl');
   if(btn){btn.disabled=true;btn.textContent='Начинаем скачивание…'}
   const url='/api/download?'+new URLSearchParams({orderId,product,token});
