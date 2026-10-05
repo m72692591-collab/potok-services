@@ -4,6 +4,7 @@ import{CATALOG,baseUrl,json,envName}from'./_shared.js';
 import{blobAuth}from'./_blob-auth.js';
 import{tbankEnv}from'./_tbank.js';
 import{npdSessionStatus}from'./_npd.js';
+import{ensureEngineerTelegramWebhook}from'./_engineer-telegram.js';
 
 function norm(s){
   return String(s||'').normalize('NFKC').toLowerCase().replace(/[^a-zа-яё0-9]/giu,'');
@@ -25,78 +26,12 @@ async function productFilesStatus(){
   }
 }
 
-function telegramToken(env=process.env){
-  return String(
-    env.ENGINEER_TELEGRAM_BOT_TOKEN
-    ||env.GROWTH_TELEGRAM_BOT_TOKEN
-    ||env.TELEGRAM_BOT_TOKEN
-    ||env.ANIMA_TACTUS_TELEGRAM_BOT_TOKEN
-    ||''
-  );
-}
-
-function telegramSecret(env=process.env){
-  const explicit=String(env.ENGINEER_TELEGRAM_WEBHOOK_SECRET||env.TELEGRAM_WEBHOOK_SECRET||'');
-  if(explicit)return explicit;
-  const base=String(env.ORDER_HMAC_SECRET||'');
-  if(base.length<32)return'';
-  return crypto.createHmac('sha256',base)
-    .update('telegram-webhook:AnimaTactusGrowthBot')
-    .digest('base64url');
-}
-
 async function telegramStatus(req){
-  const token=telegramToken();
-  const secret=telegramSecret();
-  const base={
+  const status=await ensureEngineerTelegramWebhook(req);
+  return{
     botUrl:'https://t.me/AnimaTactusGrowthBot',
-    tokenConfigured:/^\d+:[A-Za-z0-9_-]{25,}$/.test(token),
-    webhookSecretConfigured:/^[A-Za-z0-9_-]{32,256}$/.test(secret),
-    identityVerified:false,
-    webhookConfigured:false,
-    webhookMatchesExpected:false,
-    pendingUpdates:null
+    ...status
   };
-  if(!base.tokenConfigured)return base;
-  try{
-    const [meRes,whRes]=await Promise.all([
-      fetch(`https://api.telegram.org/bot${token}/getMe`,{method:'POST',signal:AbortSignal.timeout(8000)}),
-      fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`,{method:'POST',signal:AbortSignal.timeout(8000)})
-    ]);
-    const me=await meRes.json().catch(()=>({}));
-    const wh=await whRes.json().catch(()=>({}));
-    base.identityVerified=Boolean(meRes.ok&&me?.ok&&me?.result?.username==='AnimaTactusGrowthBot');
-    let url=String(wh?.result?.url||'');
-    const expected=`${baseUrl(req)}/api/engineer-support?channel=telegram`;
-    base.webhookConfigured=Boolean(whRes.ok&&wh?.ok&&url);
-    base.webhookMatchesExpected=url===expected;
-    base.pendingUpdates=Number.isFinite(Number(wh?.result?.pending_update_count))
-      ?Number(wh.result.pending_update_count):null;
-
-    if(base.identityVerified&&base.webhookSecretConfigured&&!base.webhookMatchesExpected){
-      try{
-        const setRes=await fetch(`https://api.telegram.org/bot${token}/setWebhook`,{
-          method:'POST',
-          headers:{'content-type':'application/json'},
-          body:JSON.stringify({
-            url:expected,
-            secret_token:secret,
-            allowed_updates:['message'],
-            drop_pending_updates:false
-          }),
-          signal:AbortSignal.timeout(8000)
-        });
-        const setBody=await setRes.json().catch(()=>({}));
-        if(setRes.ok&&setBody?.ok){
-          base.webhookConfigured=true;
-          base.webhookMatchesExpected=true;
-        }
-      }catch{}
-    }
-    return base;
-  }catch{
-    return base;
-  }
 }
 
 export default async function handler(req,res){
