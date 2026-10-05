@@ -1,22 +1,24 @@
-# VK → Telegram launch brief
+# Advertising entry strategy — Telegram + website + MAX
 
-Primary ad destination:
+Do not remove the website from advertising. Use separate ads/campaigns for each entry point and compare conversion.
+
+## A. Telegram
 https://t.me/AnimaTactusGrowthBot?start=eng_vk_launch
 
-Do not use the Vercel site as the advertising landing page.
-The site is only the technical checkout/legal/delivery backend after the user chooses a product inside Telegram.
+Use for users who prefer a messenger, guided choice and questions.
 
-## First campaign
-Objective: traffic to external link / Telegram bot.
-Audience: Russia, construction/project controls/AutoCAD/Primavera P6, engineers, planners, PТО/ИД-adjacent interests.
-Budget: start small only after moderation approval.
+## B. Website
+https://inzhener-s-nulya.vercel.app/?src=vk_site
 
-## Ad variants
-1. Инженер с нуля: AutoCAD и Primavera P6 без длинной теории. Бесплатная задача прямо в Telegram + практикум 490 ₽.
-2. Работаете в стройке и хотите освоить AutoCAD или Primavera P6? Зайдите в бота: бесплатный старт, рабочие задачи и курсы с нуля.
-3. AutoCAD для исполнительной документации и Primavera P6 для графиков — понятный старт с нуля. Первая задача бесплатно в Telegram.
+Use for users who want to see the offer, prices, seller/legal information and buy immediately.
 
-## Funnel
-VK ad → @AnimaTactusGrowthBot → free task / 490 ₽ starter / full course → checkout only when buyer chooses a product → T-Business → NPD receipt → protected delivery.
+## C. MAX
+Enable after the MAX bot passes moderation and its public URL/token are configured.
+Deep link format:
+https://max.ru/<botName>?start=eng_vk_max_launch
 
-Never fund a rejected campaign. Submit for moderation first, then fund the approved VK Ads account.
+## Common funnel
+VK ad → Telegram / website / MAX → product choice → T-Business → NPD receipt → protected delivery.
+
+## Budget safety
+Create and submit ads for moderation first. Do not transfer the full budget into a channel/account that has not passed moderation.
