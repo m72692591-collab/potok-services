@@ -98,37 +98,77 @@ export async function ensureEngineerTelegramWebhook(req,{env=process.env,fetchIm
   }
 }
 
-// Pure reply builder: usable by the existing consumer without starting a poller.
+// Pure reply builder: the Telegram bot is the primary advertising landing.
 export function engineerTelegramReply(update) {
   const m = update?.message;
   if (!Number.isSafeInteger(update?.update_id) || !m || m.chat?.type !== 'private'
       || m.from?.is_bot !== false || !Number.isSafeInteger(m.chat.id)
       || m.chat.id !== m.from.id || typeof m.text !== 'string') return null;
+
   const input = m.text.trim().slice(0, 1200);
   const [raw, arg = ''] = input.split(/\s+/, 2);
-  const [command, mention] = raw.split('@');
+  const [commandRaw, mention] = raw.split('@');
   if (mention && mention.toLowerCase() !== GROWTH_BOT.toLowerCase()) return null;
-  const source = command === '/start' && /^eng_[A-Za-z0-9_-]{1,60}$/.test(arg)
+
+  const source = commandRaw === '/start' && /^eng_[A-Za-z0-9_-]{1,60}$/.test(arg)
     ? arg.slice(4) : 'bot';
-  const url = (path, hash = '') => `${SITE}${path}?src=tg_${source}${hash}`;
-  const free = url('/free.html');
-  const courses = url('/', '#courses');
-  const support = url('/support');
-  const replies = {
-    '/start': `Инженер с нуля\n\nНачните бесплатно: ${free}\n\n/starter — практикум за 490 ₽\n/autocad — AutoCAD\n/primavera — Primavera P6\n/courses — курсы и цены\n/support — задать вопрос\n/access — доступ после оплаты`,
-    '/autocad': `Бесплатный старт AutoCAD: команды и практическое задание.\n${url('/free.html', '#autocad')}`,
-    '/primavera': `Бесплатный старт Primavera P6: структура проекта, работы и связи.\n${url('/free.html', '#primavera')}`,
-    '/starter': `«Первый рабочий день инженера» — AutoCAD + Primavera P6 за ${CATALOG.starter.price.toLocaleString('ru-RU')} ₽. Покупка и автоматическая выдача: ${courses}`,
-    '/courses': `Первый рабочий день инженера — ${CATALOG.starter.price.toLocaleString('ru-RU')} ₽\nAutoCAD — ${CATALOG.autocad.price.toLocaleString('ru-RU')} ₽\nPrimavera P6 — ${CATALOG.primavera.price.toLocaleString('ru-RU')} ₽\nКомплект — ${CATALOG.bundle.price.toLocaleString('ru-RU')} ₽\n\nСодержание и покупка: ${courses}`,
-    '/support': `Напишите вопрос про AutoCAD, Primavera P6, выбор курса или получение материалов. Здесь отвечает автоматический помощник.\n\nПомощник на сайте: ${support}`,
-    '/access': `После оплаты вернитесь на страницу своего заказа: там появится защищённая ссылка на материалы. Если деньги списаны, а доступа нет, не оплачивайте повторно. Порядок обращения: ${url('/contacts')}\n\nНе отправляйте сюда данные карты или секретную ссылку заказа.`
+
+  const buyUrl = product =>
+    `${SITE}/?buy=${encodeURIComponent(product)}&src=tg_${encodeURIComponent(source)}#courses`;
+
+  const keyboard = {
+    keyboard: [
+      [{ text: '🎁 Бесплатный старт' }, { text: '⚡ Практикум 490 ₽' }],
+      [{ text: '📐 AutoCAD 1 990 ₽' }, { text: '📅 Primavera P6 2 490 ₽' }],
+      [{ text: '📦 Комплект 3 490 ₽' }],
+      [{ text: '💬 Задать вопрос' }]
+    ],
+    resize_keyboard: true,
+    is_persistent: true
   };
-  const aliases = { '/engineer': '/start', '/engineer_autocad': '/autocad', '/engineer_primavera': '/primavera', '/engineer_both': '/courses' };
-  const text = replies[aliases[command] || command] || (command.startsWith('/')
-    ? 'Выберите /start, /starter, /autocad, /primavera, /courses, /support или /access.'
+
+  const aliases = {
+    '/engineer': '/start',
+    '/engineer_autocad': '/autocad',
+    '/engineer_primavera': '/primavera',
+    '/engineer_both': '/courses',
+    '🎁 Бесплатный старт': '/free',
+    '⚡ Практикум 490 ₽': '/starter',
+    '📐 AutoCAD 1 990 ₽': '/autocad_paid',
+    '📅 Primavera P6 2 490 ₽': '/primavera_paid',
+    '📦 Комплект 3 490 ₽': '/bundle',
+    '💬 Задать вопрос': '/support'
+  };
+  const command = aliases[input] || aliases[commandRaw] || commandRaw;
+  const fromAd = source.startsWith('vk_') || source.startsWith('tgads_') || source.startsWith('ad_');
+
+  const replies = {
+    '/start': fromAd
+      ? `Инженер с нуля 👷\n\nВы пришли из рекламы — сайт открывать не нужно. Всё начинается здесь, в Telegram.\n\nМожно бесплатно попробовать две короткие задачи, купить практикум за 490 ₽ или сразу выбрать полный курс. Нажмите кнопку ниже.`
+      : `Инженер с нуля 👷\n\nAutoCAD и Primavera P6 с нуля по рабочим задачам. Бесплатный старт, практикум 490 ₽ и полные курсы — выберите кнопку ниже.`,
+    '/free': `Бесплатный старт — прямо здесь.\n\nAutoCAD: откройте учебный DWG/DXF, измерьте один известный размер командой DIST, проверьте слой объекта и поставьте контрольный размер DIM.\n\nPrimavera P6: создайте учебный Project, WBS из 3 блоков и 3 Activities, задайте длительности и свяжите их FS.\n\nЕсли получилось — практикум 490 ₽ даст полный «первый рабочий день» по обоим инструментам.`,
+    '/autocad': `AutoCAD: начните с бесплатной задачи — DIST → слой → DIM. Если нужен полный путь от нуля до исполнительных схем, курс стоит ${CATALOG.autocad.price.toLocaleString('ru-RU')} ₽.\n\nКупить: ${buyUrl('autocad')}`,
+    '/primavera': `Primavera P6: начните с Project → WBS → 3 Activities → связи FS. Полный 14-дневный курс стоит ${CATALOG.primavera.price.toLocaleString('ru-RU')} ₽.\n\nКупить: ${buyUrl('primavera')}`,
+    '/starter': `«Первый рабочий день инженера» — AutoCAD + Primavera P6 за ${CATALOG.starter.price.toLocaleString('ru-RU')} ₽. Практика на 2–3 часа, два проверяемых результата и чек-лист ошибок.\n\nОплатить 490 ₽: ${buyUrl('starter')}`,
+    '/autocad_paid': `AutoCAD с нуля для стройки и исполнительной документации — 21 день, ${CATALOG.autocad.price.toLocaleString('ru-RU')} ₽.\n\nОплатить: ${buyUrl('autocad')}`,
+    '/primavera_paid': `Primavera P6 с нуля для строительства — 14 дней, ${CATALOG.primavera.price.toLocaleString('ru-RU')} ₽.\n\nОплатить: ${buyUrl('primavera')}`,
+    '/bundle': `Комплект AutoCAD + Primavera P6 — оба полных курса за ${CATALOG.bundle.price.toLocaleString('ru-RU')} ₽.\n\nОплатить: ${buyUrl('bundle')}`,
+    '/courses': `Первый рабочий день инженера — ${CATALOG.starter.price.toLocaleString('ru-RU')} ₽\nAutoCAD — ${CATALOG.autocad.price.toLocaleString('ru-RU')} ₽\nPrimavera P6 — ${CATALOG.primavera.price.toLocaleString('ru-RU')} ₽\nКомплект — ${CATALOG.bundle.price.toLocaleString('ru-RU')} ₽\n\nДля покупки нажмите нужную кнопку в меню ниже.`,
+    '/support': `Просто напишите вопрос сюда обычным сообщением. Я отвечу по AutoCAD, Primavera P6, выбору курса, оплате и доступу. Владелец проекта вручную подключаться не должен.`,
+    '/access': `После оплаты банк подтвердит платёж, чек НПД сформируется автоматически, а на странице заказа появится защищённая выдача материалов. Если деньги списались, не оплачивайте повторно — напишите сюда, что произошло.`
+  };
+
+  const text = replies[command] || (command.startsWith('/')
+    ? 'Используйте кнопки меню ниже или просто напишите свой вопрос.'
     : engineerSupportAnswer(input).answer);
-  return { method: 'sendMessage', chat_id: m.chat.id, text,
-    link_preview_options: { is_disabled: true } };
+
+  return {
+    method: 'sendMessage',
+    chat_id: m.chat.id,
+    text,
+    link_preview_options: { is_disabled: true },
+    reply_markup: keyboard
+  };
 }
 
 export async function engineerTelegramWebhook(req, res, {
