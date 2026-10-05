@@ -5,6 +5,7 @@ import{blobAuth}from'./_blob-auth.js';
 import{tbankEnv}from'./_tbank.js';
 import{npdSessionStatus}from'./_npd.js';
 import{ensureEngineerTelegramWebhook}from'./_engineer-telegram.js';
+import{ensureEngineerMaxWebhook}from'./_engineer-max.js';
 
 function norm(s){
   return String(s||'').normalize('NFKC').toLowerCase().replace(/[^a-zа-яё0-9]/giu,'');
@@ -34,6 +35,9 @@ async function telegramStatus(req){
     ...status
   };
 }
+async function maxStatus(req){
+  return ensureEngineerMaxWebhook(req);
+}
 
 export default async function handler(req,res){
   if(req.method!=='GET')return json(res,405,{error:'method_not_allowed'});
@@ -42,10 +46,11 @@ export default async function handler(req,res){
   const terminalKey=String(process.env.TBANK_TERMINAL_KEY||'');
   const tbankPassword=String(process.env.TBANK_PASSWORD||'');
   const tbankReady=Boolean(terminalKey)&&Boolean(tbankPassword);
-  const [npd,products,telegram]=await Promise.all([
+  const [npd,products,telegram,max]=await Promise.all([
     npdSessionStatus(),
     productFilesStatus(),
-    telegramStatus(req)
+    telegramStatus(req),
+    maxStatus(req)
   ]);
   const checks={
     paymentProvider:provider,
@@ -74,7 +79,8 @@ export default async function handler(req,res){
     controlPurchaseTokenConfigured:Boolean(process.env.CONTROL_PURCHASE_TOKEN),
     tbankCallbackUrl:'/api/tbank-webhook',
     yandexCallbackUrl:'/v1/webhook',
-    telegram
+    telegram,
+    max
   };
   checks.productionPaymentReady=provider==='tbank'
     ?(tbankReady&&checks.tbankTerminalMode==='NON_DEMO'&&tbankEnv()==='production')
@@ -88,7 +94,9 @@ export default async function handler(req,res){
     &&telegram.webhookSecretConfigured
     &&telegram.identityVerified
     &&telegram.webhookMatchesExpected;
+  checks.maxReady=Boolean(max.tokenConfigured&&max.webhookSecretConfigured&&max.identityVerified&&max.webhookMatchesExpected);
   checks.launchReady=checks.commerceReady;
   checks.fullAutomationReady=checks.commerceReady&&checks.telegramReady;
+  checks.multiMessengerReady=checks.fullAutomationReady&&checks.maxReady;
   return json(res,200,checks);
 }
