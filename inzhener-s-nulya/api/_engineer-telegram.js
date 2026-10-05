@@ -5,6 +5,95 @@ import { CATALOG, json, readJson } from './_shared.js';
 export const GROWTH_BOT = 'AnimaTactusGrowthBot';
 const SITE = 'https://inzhener-s-nulya.vercel.app';
 
+export function engineerTelegramToken(env=process.env) {
+  return String(
+    env.ENGINEER_TELEGRAM_BOT_TOKEN
+    || env.GROWTH_TELEGRAM_BOT_TOKEN
+    || env.TELEGRAM_BOT_TOKEN
+    || env.ANIMA_TACTUS_TELEGRAM_BOT_TOKEN
+    || ''
+  ).trim();
+}
+
+export function engineerTelegramSecret(env=process.env) {
+  const explicit = String(
+    env.ENGINEER_TELEGRAM_WEBHOOK_SECRET
+    || env.TELEGRAM_WEBHOOK_SECRET
+    || ''
+  ).trim();
+  if (/^[A-Za-z0-9_-]{32,256}$/.test(explicit)) return explicit;
+  const token = engineerTelegramToken(env);
+  if (!/^\d+:[A-Za-z0-9_-]{25,}$/.test(token)) return '';
+  return createHash('sha256')
+    .update('engineer-telegram-webhook:' + token)
+    .digest('base64url');
+}
+
+export function engineerTelegramWebhookUrl(req) {
+  const proto = req.headers?.['x-forwarded-proto'] || 'https';
+  const host = req.headers?.['x-forwarded-host'] || req.headers?.host || 'inzhener-s-nulya.vercel.app';
+  return `${proto}://${host}/api/engineer-support?channel=telegram`;
+}
+
+export async function ensureEngineerTelegramWebhook(req,{env=process.env,fetchImpl=fetch}={}) {
+  const token = engineerTelegramToken(env);
+  const secret = engineerTelegramSecret(env);
+  const result = {
+    tokenConfigured:/^\d+:[A-Za-z0-9_-]{25,}$/.test(token),
+    webhookSecretConfigured:/^[A-Za-z0-9_-]{32,256}$/.test(secret),
+    identityVerified:false,
+    webhookConfigured:false,
+    webhookMatchesExpected:false,
+    pendingUpdates:null,
+    autoConfigured:false
+  };
+  if (!result.tokenConfigured || !result.webhookSecretConfigured) return result;
+  const api = `https://api.telegram.org/bot${token}`;
+  const expected = engineerTelegramWebhookUrl(req);
+  try {
+    const meRes = await fetchImpl(`${api}/getMe`,{method:'POST',signal:AbortSignal.timeout(8000)});
+    const me = await meRes.json().catch(()=>({}));
+    result.identityVerified = Boolean(meRes.ok && me?.ok && me?.result?.username === GROWTH_BOT);
+    if (!result.identityVerified) return result;
+
+    let whRes = await fetchImpl(`${api}/getWebhookInfo`,{method:'POST',signal:AbortSignal.timeout(8000)});
+    let wh = await whRes.json().catch(()=>({}));
+    let url = String(wh?.result?.url||'');
+    result.webhookConfigured = Boolean(whRes.ok && wh?.ok && url);
+    result.webhookMatchesExpected = url === expected;
+    result.pendingUpdates = Number.isFinite(Number(wh?.result?.pending_update_count))
+      ? Number(wh.result.pending_update_count) : null;
+
+    if (!result.webhookMatchesExpected) {
+      const setRes = await fetchImpl(`${api}/setWebhook`,{
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body:JSON.stringify({
+          url:expected,
+          secret_token:secret,
+          allowed_updates:['message'],
+          drop_pending_updates:false
+        }),
+        signal:AbortSignal.timeout(8000)
+      });
+      const set = await setRes.json().catch(()=>({}));
+      if (setRes.ok && set?.ok) {
+        result.autoConfigured = true;
+        whRes = await fetchImpl(`${api}/getWebhookInfo`,{method:'POST',signal:AbortSignal.timeout(8000)});
+        wh = await whRes.json().catch(()=>({}));
+        url = String(wh?.result?.url||'');
+        result.webhookConfigured = Boolean(whRes.ok && wh?.ok && url);
+        result.webhookMatchesExpected = url === expected;
+        result.pendingUpdates = Number.isFinite(Number(wh?.result?.pending_update_count))
+          ? Number(wh.result.pending_update_count) : null;
+      }
+    }
+    return result;
+  } catch {
+    return result;
+  }
+}
+
 function derivedWebhookSecret(env=process.env){
   const base=String(env.ORDER_HMAC_SECRET||'');
   if(base.length<32)return'';
@@ -54,11 +143,7 @@ export async function engineerTelegramWebhook(req, res, {
     return json(res, 403, { error: 'forbidden' });
   const a = Buffer.from(secret), b = Buffer.from(supplied);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return json(res, 403, { error: 'forbidden' });
-  const token = env.ENGINEER_TELEGRAM_BOT_TOKEN
-    || env.GROWTH_TELEGRAM_BOT_TOKEN
-    || env.TELEGRAM_BOT_TOKEN
-    || env.ANIMA_TACTUS_TELEGRAM_BOT_TOKEN
-    || '';
+  const token = engineerTelegramToken(env);
   if (!/^\d+:[A-Za-z0-9_-]{25,}$/.test(token)) return json(res, 503, { error: 'telegram_not_configured' });
   let update;
   try { update = await readJson(req); } catch { return json(res, 400, { error: 'invalid_update' }); }
