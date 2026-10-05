@@ -40,15 +40,19 @@ export function engineerTelegramReply(update) {
 export async function engineerTelegramWebhook(req, res, {
   env = process.env, fetchImpl = fetch
 } = {}) {
-  // Disabled until deployment, sole-consumer reconciliation and secret setup.
-  if (env.ENGINEER_TELEGRAM_ENABLED !== '1') return json(res, 503, { error: 'telegram_disabled' });
-  const secret = env.ENGINEER_TELEGRAM_WEBHOOK_SECRET || '';
+  const secret = env.ENGINEER_TELEGRAM_WEBHOOK_SECRET
+    || env.TELEGRAM_WEBHOOK_SECRET
+    || '';
   const supplied = req.headers?.['x-telegram-bot-api-secret-token'];
   if (!/^[A-Za-z0-9_-]{32,256}$/.test(secret) || typeof supplied !== 'string')
     return json(res, 403, { error: 'forbidden' });
   const a = Buffer.from(secret), b = Buffer.from(supplied);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return json(res, 403, { error: 'forbidden' });
-  const token = env.ENGINEER_TELEGRAM_BOT_TOKEN || '';
+  const token = env.ENGINEER_TELEGRAM_BOT_TOKEN
+    || env.GROWTH_TELEGRAM_BOT_TOKEN
+    || env.TELEGRAM_BOT_TOKEN
+    || env.ANIMA_TACTUS_TELEGRAM_BOT_TOKEN
+    || '';
   if (!/^\d+:[A-Za-z0-9_-]{25,}$/.test(token)) return json(res, 503, { error: 'telegram_not_configured' });
   let update;
   try { update = await readJson(req); } catch { return json(res, 400, { error: 'invalid_update' }); }
