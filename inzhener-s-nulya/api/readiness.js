@@ -1,6 +1,75 @@
-import{json,envName}from'./_shared.js';
+import{list}from'@vercel/blob';
+import{CATALOG,baseUrl,json,envName}from'./_shared.js';
+import{blobAuth}from'./_blob-auth.js';
 import{tbankEnv}from'./_tbank.js';
 import{npdSessionStatus}from'./_npd.js';
+
+function norm(s){
+  return String(s||'').normalize('NFKC').toLowerCase().replace(/[^a-zа-яё0-9]/giu,'');
+}
+
+async function productFilesStatus(){
+  try{
+    const {blobs}=await list({limit:100,...blobAuth()});
+    const names=blobs.map(b=>String(b.pathname||''));
+    const normalized=new Set(names.map(norm));
+    const files={};
+    for(const [code,p] of Object.entries(CATALOG)){
+      if(p.controlOnly)continue;
+      files[code]=names.includes(p.blobPath)||normalized.has(norm(p.blobPath));
+    }
+    return{ok:Object.values(files).every(Boolean),files};
+  }catch(e){
+    return{ok:false,files:{},error:'blob_check_failed'};
+  }
+}
+
+function telegramToken(env=process.env){
+  return String(
+    env.ENGINEER_TELEGRAM_BOT_TOKEN
+    ||env.GROWTH_TELEGRAM_BOT_TOKEN
+    ||env.TELEGRAM_BOT_TOKEN
+    ||env.ANIMA_TACTUS_TELEGRAM_BOT_TOKEN
+    ||''
+  );
+}
+
+function telegramSecret(env=process.env){
+  return String(env.ENGINEER_TELEGRAM_WEBHOOK_SECRET||env.TELEGRAM_WEBHOOK_SECRET||'');
+}
+
+async function telegramStatus(req){
+  const token=telegramToken();
+  const secret=telegramSecret();
+  const base={
+    botUrl:'https://t.me/AnimaTactusGrowthBot',
+    tokenConfigured:/^\d+:[A-Za-z0-9_-]{25,}$/.test(token),
+    webhookSecretConfigured:/^[A-Za-z0-9_-]{32,256}$/.test(secret),
+    identityVerified:false,
+    webhookConfigured:false,
+    webhookMatchesExpected:false,
+    pendingUpdates:null
+  };
+  if(!base.tokenConfigured)return base;
+  try{
+    const [meRes,whRes]=await Promise.all([
+      fetch(`https://api.telegram.org/bot${token}/getMe`,{method:'POST',signal:AbortSignal.timeout(8000)}),
+      fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`,{method:'POST',signal:AbortSignal.timeout(8000)})
+    ]);
+    const me=await meRes.json().catch(()=>({}));
+    const wh=await whRes.json().catch(()=>({}));
+    base.identityVerified=Boolean(meRes.ok&&me?.ok&&me?.result?.username==='AnimaTactusGrowthBot');
+    const url=String(wh?.result?.url||'');
+    const expected=`${baseUrl(req)}/api/engineer-support?channel=telegram`;
+    base.webhookConfigured=Boolean(whRes.ok&&wh?.ok&&url);
+    base.webhookMatchesExpected=url===expected;
+    base.pendingUpdates=Number.isFinite(Number(wh?.result?.pending_update_count))
+      ?Number(wh.result.pending_update_count):null;
+    return base;
+  }catch{
+    return base;
+  }
+}
 
 export default async function handler(req,res){
   if(req.method!=='GET')return json(res,405,{error:'method_not_allowed'});
@@ -9,7 +78,11 @@ export default async function handler(req,res){
   const terminalKey=String(process.env.TBANK_TERMINAL_KEY||'');
   const tbankPassword=String(process.env.TBANK_PASSWORD||'');
   const tbankReady=Boolean(terminalKey)&&Boolean(tbankPassword);
-  const npd=await npdSessionStatus();
+  const [npd,products,telegram]=await Promise.all([
+    npdSessionStatus(),
+    productFilesStatus(),
+    telegramStatus(req)
+  ]);
   const checks={
     paymentProvider:provider,
     environment:provider==='tbank'?tbankEnv():envName(),
@@ -20,6 +93,8 @@ export default async function handler(req,res){
     tbankApiMode:provider==='tbank'?( /DEMO/i.test(terminalKey)?'securepay-demo':(tbankEnv()==='production'?'securepay-production':'rest-api-test')):'n/a',
     orderSecretConfigured:Boolean(process.env.ORDER_HMAC_SECRET&&process.env.ORDER_HMAC_SECRET.length>=32),
     blobConfigured:Boolean(process.env.BLOB_READ_WRITE_TOKEN||(process.env.BLOB_STORE_ID&&process.env.VERCEL_OIDC_TOKEN)),
+    productFilesReady:products.ok,
+    productFiles:products.files,
     legalNameConfigured:true,
     innConfigured:true,
     ogrnConfigured:true,
@@ -34,11 +109,22 @@ export default async function handler(req,res){
     controlPurchaseEnabled:String(process.env.CONTROL_PURCHASE_ENABLED||'').toLowerCase()==='true',
     controlPurchaseTokenConfigured:Boolean(process.env.CONTROL_PURCHASE_TOKEN),
     tbankCallbackUrl:'/api/tbank-webhook',
-    yandexCallbackUrl:'/v1/webhook'
+    yandexCallbackUrl:'/v1/webhook',
+    telegram
   };
   checks.productionPaymentReady=provider==='tbank'
     ?(tbankReady&&checks.tbankTerminalMode==='NON_DEMO'&&tbankEnv()==='production')
     :yandexReady;
-  checks.launchReady=checks.productionPaymentReady&&checks.orderSecretConfigured&&checks.blobConfigured&&checks.npdAutoReceiptReady;
+  checks.commerceReady=checks.productionPaymentReady
+    &&checks.orderSecretConfigured
+    &&checks.blobConfigured
+    &&checks.productFilesReady
+    &&checks.npdAutoReceiptReady;
+  checks.telegramReady=telegram.tokenConfigured
+    &&telegram.webhookSecretConfigured
+    &&telegram.identityVerified
+    &&telegram.webhookMatchesExpected;
+  checks.launchReady=checks.commerceReady;
+  checks.fullAutomationReady=checks.commerceReady&&checks.telegramReady;
   return json(res,200,checks);
 }
