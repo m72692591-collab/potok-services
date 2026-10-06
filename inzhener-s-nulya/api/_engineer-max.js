@@ -2,6 +2,11 @@ import { engineerMaxFetch } from './_engineer-max-http.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { engineerSupportAnswer } from './_engineer-support.js';
 import { CATALOG, json, readJson } from './_shared.js';
+import createPayment from './create-payment.js';
+import { npdSessionStatus } from './_npd.js';
+import { tbankEnv } from './_tbank.js';
+import { engineerMaxCheckout, MAX_BUY_LABELS } from './_engineer-max-checkout.js';
+import { loadMaxSession, saveMaxSession } from './_engineer-max-session.js';
 
 const API='https://platform-api2.max.ru';
 const SITE='https://inzhener-s-nulya.vercel.app';
@@ -104,24 +109,18 @@ function cleanSource(raw){
   return v||'max';
 }
 
-function buyUrl(product,source){
-  const q=new URLSearchParams({buy:product,src:'max_'+cleanSource(source)});
-  return SITE+'/?'+q.toString()+'#courses';
-}
-
 function keyboard(source){
-  const freeUrl=SITE+'/free.html?src=max_'+encodeURIComponent(cleanSource(source));
   return [{type:'inline_keyboard',payload:{buttons:[
-    [{type:'link',text:'🎁 Бесплатные задания — начать',url:freeUrl}],
-    [{type:'link',text:'⚡ Первый рабочий день — 490 ₽',url:buyUrl('starter',source)}],
-    [{type:'link',text:'📐 AutoCAD · 21 день · 1 990 ₽',url:buyUrl('autocad',source)}],
-    [{type:'link',text:'📅 Primavera · 14 дней · 2 490 ₽',url:buyUrl('primavera',source)}],
-    [{type:'link',text:'📦 AutoCAD + Primavera · 3 490 ₽',url:buyUrl('bundle',source)}]
+    [{type:'message',text:'🎁 Бесплатный старт'}],
+    [{type:'message',text:MAX_BUY_LABELS.starter}],
+    [{type:'message',text:MAX_BUY_LABELS.autocad}],
+    [{type:'message',text:MAX_BUY_LABELS.primavera}],
+    [{type:'message',text:MAX_BUY_LABELS.bundle}]
   ]}}];
 }
 
 function courseMenu(){
-  return '👷 ИНЖЕНЕР С НУЛЯ\nAutoCAD и Primavera P6 по рабочим задачам строительства.\n\n🎁 Начните бесплатно\nПопробуйте задания по чертежам и календарному графику. Кнопка ниже открывает бесплатные материалы; команда /free показывает задание прямо здесь.\n\n⚡ Первый рабочий день инженера — 490 ₽\nКороткий практикум: попробуйте формат перед полным курсом.\n\n📐 AutoCAD — 21 день · 1 990 ₽\nДля стройки и исполнительной документации.\n\n📅 Primavera P6 — 14 дней · 2 490 ₽\nС нуля: структура проекта, задачи и календарный график.\n\n📦 AutoCAD + Primavera P6 — 3 490 ₽\nОба курса в одном комплекте.\n\nВыберите материалы ниже. Покупка открывается на сайте; после оплаты цифровой товар выдаётся автоматически.\n\n💬 Не знаете, с чего начать? Напишите вопрос — помогу выбрать.';
+  return '👷 ИНЖЕНЕР С НУЛЯ\nAutoCAD и Primavera P6 по рабочим задачам строительства.\n\n🎁 Начните бесплатно\nПопробуйте задания по чертежам и календарному графику. Кнопка ниже и команда /free показывают задание прямо здесь.\n\n⚡ Первый рабочий день инженера — 490 ₽\nКороткий практикум: попробуйте формат перед полным курсом.\n\n📐 AutoCAD — 21 день · 1 990 ₽\nДля стройки и исполнительной документации.\n\n📅 Primavera P6 — 14 дней · 2 490 ₽\nС нуля: структура проекта, задачи и календарный график.\n\n📦 AutoCAD + Primavera P6 — 3 490 ₽\nОба курса в одном комплекте.\n\nВыберите продукт ниже. Email или телефон для чека и подтверждение условий — прямо в этом чате. Затем бот даст кнопку оплаты Т-Банка. После оплаты цифровой товар выдаётся автоматически.\n\n💬 Не знаете, с чего начать? Напишите вопрос — помогу выбрать.';
 }
 
 export function engineerMaxReply(update){
@@ -138,7 +137,7 @@ export function engineerMaxReply(update){
     if(m?.sender?.is_bot===true)return null;
     const input=String(m?.body?.text||'').trim().slice(0,1200);
     if(!input)return null;
-    const cmd=input.split(/\s+/,1)[0].toLowerCase();
+    const cmd=input==='🎁 Бесплатный старт'?'/free':input.split(/\s+/,1)[0].toLowerCase();
     if(cmd==='/start'||cmd==='/courses'){
       text=courseMenu();
     }else if(cmd==='/free'){
@@ -165,7 +164,23 @@ export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engi
 
   let update;
   try{update=await readJson(req)}catch{return json(res,400,{error:'invalid_update'})}
-  const reply=engineerMaxReply(update);
+  let reply;
+  try{
+    reply=await engineerMaxCheckout(update,{
+      loadSession:loadMaxSession,saveSession:saveMaxSession,
+      canPay:async()=>String(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase()==='tbank'&&tbankEnv()==='production'&&Boolean((await npdSessionStatus()).connected),
+      createPayment:async(body)=>{
+        let status=200,data;
+        const response={status(n){status=n;return this},setHeader(){return this},end(raw){data=JSON.parse(raw)}};
+        await createPayment({method:'POST',headers:{host:'inzhener-s-nulya.vercel.app','x-forwarded-proto':'https'},body},response);
+        if(status!==200||!data?.paymentUrl)throw new Error('max_payment_init_failed');
+        return data;
+      }
+    })||engineerMaxReply(update);
+  }catch{
+    console.error('max_checkout_unavailable');
+    return json(res,503,{error:'max_checkout_unavailable'});
+  }
   if(!reply)return json(res,200,{ok:true});
 
   try{
