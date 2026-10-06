@@ -110,16 +110,18 @@ function buyUrl(product,source){
 }
 
 function keyboard(source){
+  const freeUrl=SITE+'/free.html?src=max_'+encodeURIComponent(cleanSource(source));
   return [{type:'inline_keyboard',payload:{buttons:[
-    [
-      {type:'link',text:'⚡ Практикум 490 ₽',url:buyUrl('starter',source)},
-      {type:'link',text:'📐 AutoCAD 1 990 ₽',url:buyUrl('autocad',source)}
-    ],
-    [
-      {type:'link',text:'📅 Primavera 2 490 ₽',url:buyUrl('primavera',source)},
-      {type:'link',text:'📦 Комплект 3 490 ₽',url:buyUrl('bundle',source)}
-    ]
+    [{type:'link',text:'🎁 Бесплатные задания — начать',url:freeUrl}],
+    [{type:'link',text:'⚡ Первый рабочий день — 490 ₽',url:buyUrl('starter',source)}],
+    [{type:'link',text:'📐 AutoCAD · 21 день · 1 990 ₽',url:buyUrl('autocad',source)}],
+    [{type:'link',text:'📅 Primavera · 14 дней · 2 490 ₽',url:buyUrl('primavera',source)}],
+    [{type:'link',text:'📦 AutoCAD + Primavera · 3 490 ₽',url:buyUrl('bundle',source)}]
   ]}}];
+}
+
+function courseMenu(){
+  return '👷 ИНЖЕНЕР С НУЛЯ\nAutoCAD и Primavera P6 по рабочим задачам строительства.\n\n🎁 Начните бесплатно\nПопробуйте задания по чертежам и календарному графику. Кнопка ниже открывает бесплатные материалы; команда /free показывает задание прямо здесь.\n\n⚡ Первый рабочий день инженера — 490 ₽\nКороткий практикум: попробуйте формат перед полным курсом.\n\n📐 AutoCAD — 21 день · 1 990 ₽\nДля стройки и исполнительной документации.\n\n📅 Primavera P6 — 14 дней · 2 490 ₽\nС нуля: структура проекта, задачи и календарный график.\n\n📦 AutoCAD + Primavera P6 — 3 490 ₽\nОба курса в одном комплекте.\n\nВыберите материалы ниже. Покупка открывается на сайте; после оплаты цифровой товар выдаётся автоматически.\n\n💬 Не знаете, с чего начать? Напишите вопрос — помогу выбрать.';
 }
 
 export function engineerMaxReply(update){
@@ -129,7 +131,7 @@ export function engineerMaxReply(update){
   if(type==='bot_started'){
     userId=Number(update?.user?.user_id);
     source=cleanSource(update?.payload||'max');
-    text='Инженер с нуля 👷\n\nAutoCAD и Primavera P6 с нуля по рабочим задачам.\n\nБесплатный старт:\n• AutoCAD — DIST → слой → DIM.\n• Primavera P6 — Project → WBS → 3 Activities → связи FS.\n\nДальше можно пройти практикум за 490 ₽ или сразу выбрать полный курс.\n\nЕсли есть вопрос — просто напишите его сюда.';
+    text=courseMenu();
   }else if(type==='message_created'){
     const m=update?.message;
     userId=Number(m?.sender?.user_id);
@@ -138,7 +140,7 @@ export function engineerMaxReply(update){
     if(!input)return null;
     const cmd=input.split(/\s+/,1)[0].toLowerCase();
     if(cmd==='/start'||cmd==='/courses'){
-      text='Первый рабочий день инженера — '+CATALOG.starter.price.toLocaleString('ru-RU')+' ₽\nAutoCAD — '+CATALOG.autocad.price.toLocaleString('ru-RU')+' ₽\nPrimavera P6 — '+CATALOG.primavera.price.toLocaleString('ru-RU')+' ₽\nКомплект — '+CATALOG.bundle.price.toLocaleString('ru-RU')+' ₽\n\nНажмите нужную кнопку ниже.';
+      text=courseMenu();
     }else if(cmd==='/free'){
       text='Бесплатный старт:\n\nAutoCAD: измерьте известный размер командой DIST, проверьте слой объекта и поставьте контрольный размер DIM.\n\nPrimavera P6: создайте Project, WBS из 3 блоков и 3 Activities, задайте длительности и свяжите их FS.\n\nЕсли получилось — переходите к практикуму 490 ₽ или полному курсу.';
     }else if(cmd==='/support'){
