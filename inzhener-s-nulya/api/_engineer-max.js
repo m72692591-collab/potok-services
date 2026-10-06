@@ -33,11 +33,13 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=fe
   const token=engineerMaxToken(env);
   const secret=engineerMaxSecret(env);
   const expected=engineerMaxWebhookUrl(req);
-  const out={tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false};
+  const out={tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false,diagnostic:{stage:'configuration',httpStatus:null,errorCode:null}};
   if(!out.tokenConfigured||!out.webhookSecretConfigured)return out;
   try{
+    out.diagnostic.stage='identity';
     const meRes=await fetchImpl(API+'/me',{headers:{Authorization:token},signal:AbortSignal.timeout(8000)});
     const me=await meRes.json().catch(()=>({}));
+    out.diagnostic.httpStatus=meRes.status;
     out.identityVerified=Boolean(meRes.ok&&me?.is_bot===true&&Number.isFinite(Number(me?.user_id)));
     if(!out.identityVerified)return out;
     out.username=String(me?.username||'');
@@ -67,6 +69,7 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=fe
       }
     }
 
+    out.diagnostic.stage='subscriptions';
     const subsRes=await fetchImpl(API+'/subscriptions',{headers:{Authorization:token},signal:AbortSignal.timeout(8000)});
     const subs=await subsRes.json().catch(()=>[]);
     const list=Array.isArray(subs)?subs:(Array.isArray(subs?.subscriptions)?subs.subscriptions:[]);
@@ -84,8 +87,13 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=fe
         out.autoConfigured=true;out.webhookConfigured=true;out.webhookMatchesExpected=true;
       }
     }
+    out.diagnostic.stage='complete';
     return out;
-  }catch{return out}
+  }catch(error){
+    const code=String(error?.cause?.code||error?.code||error?.name||'unknown');
+    out.diagnostic.errorCode=/^[A-Za-z0-9_]{1,80}$/.test(code)?code:'request_failed';
+    return out;
+  }
 }
 
 function cleanSource(raw){
