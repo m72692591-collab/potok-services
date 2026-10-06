@@ -1,3 +1,4 @@
+import { engineerMaxFetch } from './_engineer-max-http.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { engineerSupportAnswer } from './_engineer-support.js';
 import { CATALOG, json, readJson } from './_shared.js';
@@ -29,7 +30,7 @@ export function engineerMaxWebhookUrl(req){
 
 function auth(token){return{Authorization:token,'content-type':'application/json'}}
 
-export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=fetch}={}){
+export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=engineerMaxFetch}={}){
   const token=engineerMaxToken(env);
   const secret=engineerMaxSecret(env);
   const expected=engineerMaxWebhookUrl(req);
@@ -43,6 +44,8 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=fe
     out.identityVerified=Boolean(meRes.ok&&me?.is_bot===true&&Number.isFinite(Number(me?.user_id)));
     if(!out.identityVerified)return out;
     out.username=String(me?.username||'');
+    const expectedUsername=String(env.MAX_BOT_URL||'https://max.ru/se13638142_1_bot').split('/').pop()?.split('?')[0];
+    if(out.username!==expectedUsername){out.identityVerified=false;out.diagnostic.errorCode='BOT_IDENTITY_MISMATCH';return out;}
     if(out.username)out.botUrl='https://max.ru/'+out.username;
     out.profileDescriptionConfigured=Boolean(String(me?.description||'').trim());
     out.profileAvatarConfigured=Boolean(String(me?.avatar_url||me?.full_avatar_url||'').trim());
@@ -126,18 +129,18 @@ export function engineerMaxReply(update){
   if(type==='bot_started'){
     userId=Number(update?.user?.user_id);
     source=cleanSource(update?.payload||'max');
-    text='Инженер с нуля 👷\\n\\nAutoCAD и Primavera P6 с нуля по рабочим задачам.\\n\\nБесплатный старт:\\n• AutoCAD — DIST → слой → DIM.\\n• Primavera P6 — Project → WBS → 3 Activities → связи FS.\\n\\nДальше можно пройти практикум за 490 ₽ или сразу выбрать полный курс.\\n\\nЕсли есть вопрос — просто напишите его сюда.';
+    text='Инженер с нуля 👷\n\nAutoCAD и Primavera P6 с нуля по рабочим задачам.\n\nБесплатный старт:\n• AutoCAD — DIST → слой → DIM.\n• Primavera P6 — Project → WBS → 3 Activities → связи FS.\n\nДальше можно пройти практикум за 490 ₽ или сразу выбрать полный курс.\n\nЕсли есть вопрос — просто напишите его сюда.';
   }else if(type==='message_created'){
     const m=update?.message;
     userId=Number(m?.sender?.user_id);
     if(m?.sender?.is_bot===true)return null;
     const input=String(m?.body?.text||'').trim().slice(0,1200);
     if(!input)return null;
-    const cmd=input.split(/\\s+/,1)[0].toLowerCase();
+    const cmd=input.split(/\s+/,1)[0].toLowerCase();
     if(cmd==='/start'||cmd==='/courses'){
-      text='Первый рабочий день инженера — '+CATALOG.starter.price.toLocaleString('ru-RU')+' ₽\\nAutoCAD — '+CATALOG.autocad.price.toLocaleString('ru-RU')+' ₽\\nPrimavera P6 — '+CATALOG.primavera.price.toLocaleString('ru-RU')+' ₽\\nКомплект — '+CATALOG.bundle.price.toLocaleString('ru-RU')+' ₽\\n\\nНажмите нужную кнопку ниже.';
+      text='Первый рабочий день инженера — '+CATALOG.starter.price.toLocaleString('ru-RU')+' ₽\nAutoCAD — '+CATALOG.autocad.price.toLocaleString('ru-RU')+' ₽\nPrimavera P6 — '+CATALOG.primavera.price.toLocaleString('ru-RU')+' ₽\nКомплект — '+CATALOG.bundle.price.toLocaleString('ru-RU')+' ₽\n\nНажмите нужную кнопку ниже.';
     }else if(cmd==='/free'){
-      text='Бесплатный старт:\\n\\nAutoCAD: измерьте известный размер командой DIST, проверьте слой объекта и поставьте контрольный размер DIM.\\n\\nPrimavera P6: создайте Project, WBS из 3 блоков и 3 Activities, задайте длительности и свяжите их FS.\\n\\nЕсли получилось — переходите к практикуму 490 ₽ или полному курсу.';
+      text='Бесплатный старт:\n\nAutoCAD: измерьте известный размер командой DIST, проверьте слой объекта и поставьте контрольный размер DIM.\n\nPrimavera P6: создайте Project, WBS из 3 блоков и 3 Activities, задайте длительности и свяжите их FS.\n\nЕсли получилось — переходите к практикуму 490 ₽ или полному курсу.';
     }else if(cmd==='/support'){
       text='Напишите вопрос обычным сообщением. Я отвечу по AutoCAD, Primavera P6, выбору курса, оплате и доступу.';
     }else{
@@ -149,7 +152,7 @@ export function engineerMaxReply(update){
   return{userId,text,attachments:keyboard(source)};
 }
 
-export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=fetch}={}){
+export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engineerMaxFetch}={}){
   const secret=engineerMaxSecret(env);
   const supplied=req.headers?.['x-max-bot-api-secret'];
   if(!/^[A-Za-z0-9_-]{5,256}$/.test(secret)||typeof supplied!=='string')return json(res,403,{error:'forbidden'});
