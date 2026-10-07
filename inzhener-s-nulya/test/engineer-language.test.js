@@ -19,3 +19,5 @@ test('Russian native command questions yield bilingual replies',()=>{
  assert.match(engineerSupportAnswer('дист').answer,/DIST \/ ДИСТ/);
  assert.match(engineerSupportAnswer('что такое структура работ').answer,/WBS \/ Структура работ/);
 });
+
+test('bot answers its own first-command suggestion with both languages',()=>{const r=engineerSupportAnswer('Какие команды AutoCAD учить первыми?');assert.equal(r.category,'autocad_commands');assert.match(r.answer,/_ZOOM \/ ПОКАЗАТЬ/);assert.match(r.answer,/_LAYER \/ СЛОЙ/);});
