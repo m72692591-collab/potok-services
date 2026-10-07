@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import fs from 'node:fs';
 import {engineerMaxCheckout,MAX_BUY_LABELS} from '../api/_engineer-max-checkout.js';
 const msg=(text,id=1,chat_type='dialog')=>({update_type:'message_created',message:{sender:{user_id:id,is_bot:false},recipient:{chat_type},body:{text}}});
 function fixture(){
@@ -44,4 +45,26 @@ test('provider failure does not return catalog link and allows explicit retry',a
   const f=fixture();await f.run(msg(MAX_BUY_LABELS.starter));await f.run(msg('buyer@example.com'));
   f.deps.createPayment=async()=>{throw new Error('failed')};
   const r=await f.run(msg('Принимаю · 490 ₽'));assert.match(r.text,/Не удалось/);assert.equal(f.sessions.get(1).phase,'consent');
+});
+test('legacy MAX links select the right product in chat without payment or consent',async()=>{
+  for(const p of Object.keys(MAX_BUY_LABELS)){
+    const f=fixture();
+    const r=await f.run({update_type:'bot_started',user:{user_id:1},payload:'buy_'+p+'__src_max_eng_vk_max_launch'});
+    assert.equal(f.sessions.get(1).product,p);assert.equal(f.sessions.get(1).source,'eng_vk_max_launch');
+    assert.match(r.text,/email/);assert.equal(f.orders.length,0);
+    assert.ok(!r.attachments[0].payload.buttons.flat().some(b=>b.url?.includes('?buy=')));
+  }
+  const f=fixture();await f.run(msg('/start buy_starter'));assert.equal(f.sessions.get(1).product,'starter');
+  await f.run(msg('/starter'));assert.equal(f.orders.length,0);
+});
+test('legacy redirects are limited to MAX purchase sources and the four real products',()=>{
+  const config=JSON.parse(fs.readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
+  assert.equal(config.redirects.length,4);
+  for(const rule of config.redirects){
+    assert.equal(rule.source,'/');assert.equal(rule.permanent,false);
+    assert.match(rule.destination,/^https:\/\/max.ru\/se13638142_1_bot\?start=buy_/);
+    const source=new RegExp('^'+rule.has.find(h=>h.key==='src').value+'$');
+    assert.equal(source.test('max_eng_vk_max_launch'),true);
+    for(const s of ['tg_bot','vk_site','max_','max_<script>'])assert.equal(source.test(s),false);
+  }
 });
