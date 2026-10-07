@@ -1,1 +1,133 @@
-{"rewrites":[{"source":"/v1/webhook","destination":"/api/yandex-webhook"},{"source":"/payment","destination":"/api/legal?type=payment"},{"source":"/delivery","destination":"/api/legal?type=delivery"},{"source":"/return","destination":"/api/legal?type=return"},{"source":"/terms","destination":"/api/legal?type=offer"},{"source":"/offer","destination":"/api/legal?type=offer"},{"source":"/privacy","destination":"/api/legal?type=privacy"},{"source":"/contacts","destination":"/api/legal?type=contacts"},{"source":"/requisites","destination":"/api/legal?type=requisites"},{"source":"/support","destination":"/support.html"}],"headers":[{"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},{"key":"Permissions-Policy","value":"camera=(), microphone=(), geolocation=()"}]}]}
+{
+  "rewrites": [
+    {
+      "source": "/v1/webhook",
+      "destination": "/api/yandex-webhook"
+    },
+    {
+      "source": "/payment",
+      "destination": "/api/legal?type=payment"
+    },
+    {
+      "source": "/delivery",
+      "destination": "/api/legal?type=delivery"
+    },
+    {
+      "source": "/return",
+      "destination": "/api/legal?type=return"
+    },
+    {
+      "source": "/terms",
+      "destination": "/api/legal?type=offer"
+    },
+    {
+      "source": "/offer",
+      "destination": "/api/legal?type=offer"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/api/legal?type=privacy"
+    },
+    {
+      "source": "/contacts",
+      "destination": "/api/legal?type=contacts"
+    },
+    {
+      "source": "/requisites",
+      "destination": "/api/legal?type=requisites"
+    },
+    {
+      "source": "/support",
+      "destination": "/support.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "buy",
+          "value": "starter"
+        },
+        {
+          "type": "query",
+          "key": "src",
+          "value": "(?<maxsrc>max_[A-Za-z0-9_-]{1,80})"
+        }
+      ],
+      "destination": "https://max.ru/se13638142_1_bot?start=buy_starter__src_:maxsrc",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "buy",
+          "value": "autocad"
+        },
+        {
+          "type": "query",
+          "key": "src",
+          "value": "(?<maxsrc>max_[A-Za-z0-9_-]{1,80})"
+        }
+      ],
+      "destination": "https://max.ru/se13638142_1_bot?start=buy_autocad__src_:maxsrc",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "buy",
+          "value": "primavera"
+        },
+        {
+          "type": "query",
+          "key": "src",
+          "value": "(?<maxsrc>max_[A-Za-z0-9_-]{1,80})"
+        }
+      ],
+      "destination": "https://max.ru/se13638142_1_bot?start=buy_primavera__src_:maxsrc",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "buy",
+          "value": "bundle"
+        },
+        {
+          "type": "query",
+          "key": "src",
+          "value": "(?<maxsrc>max_[A-Za-z0-9_-]{1,80})"
+        }
+      ],
+      "destination": "https://max.ru/se13638142_1_bot?start=buy_bundle__src_:maxsrc",
+      "permanent": false
+    }
+  ]
+}
