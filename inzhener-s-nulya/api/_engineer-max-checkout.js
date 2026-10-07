@@ -24,14 +24,20 @@ export async function engineerMaxCheckout(update,{loadSession,saveSession,create
     const id=Number(update?.user?.user_id);
     if(Number.isSafeInteger(id)&&id>0){
       const source=String(update?.payload||'bot').replace(/[^A-Za-z0-9_-]/g,'').slice(0,80)||'bot';
-      await saveSession(id,{source,phase:'idle',expiresAt:now()+TTL});
+      const purchase=source.match(/^buy_(starter|autocad|primavera|bundle)(?:__src_(max_[A-Za-z0-9_-]{1,80}))?$/);
+      await saveSession(id,{source:purchase?(purchase[2]||'max_legacy').replace(/^max_/, ''):source,phase:'idle',expiresAt:now()+TTL});
+      if(purchase)return engineerMaxCheckout({update_type:'message_created',message:{sender:{user_id:id,is_bot:false},recipient:{chat_type:'dialog'},body:{text:MAX_BUY_LABELS[purchase[1]]}}},{loadSession,saveSession,createPayment,canPay,now});
     }
     return null;
   }
   if(update?.update_type!=='message_created')return null;
   const m=update.message,userId=Number(m?.sender?.user_id);
   if(m?.sender?.is_bot===true||m?.recipient?.chat_type!=='dialog'||!Number.isSafeInteger(userId)||userId<=0)return null;
-  const input=String(m?.body?.text||'').trim().slice(0,1200);
+  let input=String(m?.body?.text||'').trim().slice(0,1200);
+  const startPurchase=input.match(/^\/start\s+(buy_(?:starter|autocad|primavera|bundle)(?:__src_max_[A-Za-z0-9_-]{1,80})?)$/);
+  if(startPurchase)return engineerMaxCheckout({update_type:'bot_started',user:{user_id:userId},payload:startPurchase[1]},{loadSession,saveSession,createPayment,canPay,now});
+  const aliases={'/starter':'starter','/buy_starter':'starter','купить 490':'starter','⚡ Первый рабочий день — 490 ₽':'starter','/autocad_paid':'autocad','/primavera_paid':'primavera','/bundle':'bundle'};
+  if(aliases[input])input=MAX_BUY_LABELS[aliases[input]];
   if(!input)return null;
   const reply=r=>({userId,...r});
   const selected=Object.keys(MAX_BUY_LABELS).find(p=>MAX_BUY_LABELS[p]===input);
