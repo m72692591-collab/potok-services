@@ -1,4 +1,6 @@
+import { bilingualText,LANGUAGE_NOTE } from './_engineer-language.js';
 const TOPICS=[
+  {id:'language',words:['расклад','русская версия','русский интерфейс','английский интерфейс','перевод команд','перевод меню'],answer:LANGUAGE_NOTE},
   {
     id:'choose',
     words:['что выбрать','какой курс','выбрать курс','autocad или primavera','автокад или primavera','оба курса','комплект','490','первый рабочий день'],
@@ -46,7 +48,7 @@ const TOPICS=[
   },
   {
     id:'autocad_dist',
-    words:['dist','измерить расстояние','расстояние autocad','размер на чертеже','dim'],
+    words:['дист','коорд','размер', 'dist','измерить расстояние','расстояние autocad','размер на чертеже','dim'],
     answer:'Для первой проверки расстояния используйте DIST: укажите две характерные точки и получите фактическое расстояние. Чтобы показать размер на чертеже, используйте DIM. Перед окончательным оформлением проверьте единицы, масштаб и слой размера.'
   },
   {
@@ -61,7 +63,7 @@ const TOPICS=[
   },
   {
     id:'primavera_wbs',
-    words:['wbs','структура проекта','дерево проекта'],
+    words:['структура работ','wbs','структура проекта','дерево проекта'],
     answer:'WBS — это иерархия частей проекта, а не сами работы. Сначала разбейте проект на логические блоки, затем внутри каждого блока создавайте конкретные работы с длительностями и связями.'
   },
   {
@@ -86,7 +88,7 @@ const TOPICS=[
   }
 ];
 
-export function engineerSupportAnswer(question){
+function supportAnswer(question){
   const q=String(question||'').trim().toLowerCase().replace(/ё/g,'е');
   if(!q)return{
     category:'empty',
@@ -117,3 +119,6 @@ export function engineerSupportAnswer(question){
     suggestions:['Как проверить размер в AutoCAD?','Что такое WBS?','Какой курс выбрать?']
   };
 }
+
+
+export function engineerSupportAnswer(question){const result=supportAnswer(question);return {...result,answer:bilingualText(result.answer),suggestions:result.suggestions.map(bilingualText)};}

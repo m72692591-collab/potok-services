@@ -1,3 +1,4 @@
+import { bilingualText,LANGUAGE_NOTE } from './_engineer-language.js';
 import { deliverMaxOrder,prepareMaxAsset } from './_engineer-max-delivery.js';
 import { engineerMaxFetch } from './_engineer-max-http.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -40,7 +41,7 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=en
   const token=engineerMaxToken(env);
   const secret=engineerMaxSecret(env);
   const expected=engineerMaxWebhookUrl(req);
-  const out={checkoutVersion:'chat-v3-native-files',checkoutStoreReadable:false,tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false,diagnostic:{stage:'configuration',httpStatus:null,errorCode:null}};
+  const out={languageVersion:'en-ru-v1',checkoutVersion:'chat-v3-native-files',checkoutStoreReadable:false,tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false,diagnostic:{stage:'configuration',httpStatus:null,errorCode:null}};
   if(!out.tokenConfigured||!out.webhookSecretConfigured)return out;
   try{
     out.diagnostic.stage='identity';
@@ -156,7 +157,7 @@ export function engineerMaxReply(update){
   }else return null;
 
   if(!Number.isSafeInteger(userId)||userId<=0)return null;
-  return{userId,text,attachments:keyboard(source)};
+  return{userId,text:bilingualText(text)+(text.startsWith('Бесплатный старт:')?'\n\n'+LANGUAGE_NOTE:''),attachments:keyboard(source)};
 }
 
 export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engineerMaxFetch}={}){

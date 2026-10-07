@@ -1,3 +1,4 @@
+import { bilingualText,LANGUAGE_NOTE } from './_engineer-language.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { engineerSupportAnswer } from './_engineer-support.js';
 import { CATALOG, json, readJson } from './_shared.js';
@@ -158,14 +159,14 @@ export function engineerTelegramReply(update) {
     '/access': `После оплаты банк подтвердит платёж, чек НПД сформируется автоматически, а на странице заказа появится защищённая выдача материалов. Если деньги списались, не оплачивайте повторно — напишите сюда, что произошло.`
   };
 
-  const text = replies[command] || (command.startsWith('/')
+  const rawText = replies[command] || (command.startsWith('/')
     ? 'Используйте кнопки меню ниже или просто напишите свой вопрос.'
     : engineerSupportAnswer(input).answer);
 
   return {
     method: 'sendMessage',
     chat_id: m.chat.id,
-    text,
+    text:bilingualText(rawText)+(command==='/free'?'\n\n'+LANGUAGE_NOTE:''),
     link_preview_options: { is_disabled: true },
     reply_markup: keyboard
   };
@@ -195,3 +196,4 @@ export async function engineerTelegramWebhook(req, res, {
   // Telegram executes this reply. A 200 alone does not prove message delivery.
   return json(res, 200, engineerTelegramReply(update) || { ok: true });
 }
+
