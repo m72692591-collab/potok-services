@@ -161,7 +161,7 @@ async function post(method,payload){
   return data;
 }
 
-export async function initTbankPayment({orderId,amount,title,site,orderPage,contact}){
+export async function initTbankPayment({orderId,amount,title,site,orderPage,contact,successUrl,failUrl}){
   const{terminalKey}=requireTbankCredentials();
   const payload={
     TerminalKey:terminalKey,
@@ -170,8 +170,8 @@ export async function initTbankPayment({orderId,amount,title,site,orderPage,cont
     Description:String(title||'').slice(0,140),
     Language:'ru',
     NotificationURL:`${site}/api/tbank-webhook`,
-    SuccessURL:`${orderPage}&result=success`,
-    FailURL:`${orderPage}&result=error`
+    SuccessURL:successUrl||`${orderPage}&result=success`,
+    FailURL:failUrl||`${orderPage}&result=error`
   };
   const d=await post('Init',payload);
   if(!d?.Success||String(d?.ErrorCode||'')!=='0'||!d?.PaymentURL){
@@ -237,3 +237,4 @@ export function safeTbankState(data,product,orderId,paymentId){
   if(['REJECTED','CANCELED','REVERSED','PARTIAL_REVERSED','REFUNDED','PARTIAL_REFUNDED'].includes(status))return{state:'failed',paymentStatus:status};
   return{state:'pending',paymentStatus:status||'NEW',paymentId:String(data.PaymentId||'')};
 }
+

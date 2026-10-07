@@ -51,15 +51,17 @@ export default async function handler(req,res){
     const site=baseUrl(req);
     const orderPage=`${site}/order.html?orderId=${encodeURIComponent(orderId)}&product=${p.code}&token=${encodeURIComponent(token)}`;
 
+    const maxUserId=Number.isSafeInteger(req.engineerMaxUserId)&&req.engineerMaxUserId>0?req.engineerMaxUserId:null;
+    const maxReturn=maxUserId?'https://max.ru/se13638142_1_bot?start=access':undefined;
     let paymentUrl;
     if(provider()==='tbank'){
-      const init=await initTbankPayment({orderId,amount:p.price,title:p.title,site,orderPage,contact});
+      const init=await initTbankPayment({orderId,amount:p.price,title:p.title,site,orderPage,contact,successUrl:maxReturn,failUrl:maxReturn});
       paymentUrl=init.paymentUrl;
-      try{await saveTbankPayment(orderId,{paymentId:init.paymentId,product:p.code,status:init.status,buyerContact:contact,buyerType:'individual',createdAt:termsAcceptedAt,termsAccepted:true,termsVersion:TERMS_VERSION,termsAcceptedAt,trafficAttribution,npdReceiptStatus:p.controlOnly?'not_required':'awaiting_payment',offerPath:'/offer',returnPath:'/return',deliveryPath:'/delivery'})}catch(se){console.error('tbank_payment_map_save_failed',String(se?.message||se))}
+      try{await saveTbankPayment(orderId,{...(maxUserId?{maxUserId}:{}),paymentId:init.paymentId,product:p.code,status:init.status,buyerContact:contact,buyerType:'individual',createdAt:termsAcceptedAt,termsAccepted:true,termsVersion:TERMS_VERSION,termsAcceptedAt,trafficAttribution,npdReceiptStatus:p.controlOnly?'not_required':'awaiting_payment',offerPath:'/offer',returnPath:'/return',deliveryPath:'/delivery'})}catch(se){console.error('tbank_payment_map_save_failed',String(se?.message||se));if(maxUserId)throw new Error('max_order_binding_failed')}
     }else{
       paymentUrl=await createYandex(p,contact,orderId,orderPage);
     }
-    return json(res,200,{paymentUrl});
+    return json(res,200,{paymentUrl,...(maxUserId?{orderId}: {})});
   }catch(e){
     console.error('create_payment_failed',String(e?.message||e),e?.providerCode||'',e?.providerMessage||'',e?.providerDetails||'');
     const cfg=/TBANK_TERMINAL_KEY|TBANK_PASSWORD|YANDEX_PAY_API_KEY|ORDER_HMAC_SECRET/.test(String(e?.message||e));
@@ -77,3 +79,4 @@ export default async function handler(req,res){
     return json(res,cfg?503:500,body);
   }
 }
+

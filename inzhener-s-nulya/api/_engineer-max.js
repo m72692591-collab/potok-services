@@ -1,3 +1,4 @@
+import { deliverMaxOrder,prepareMaxAsset } from './_engineer-max-delivery.js';
 import { engineerMaxFetch } from './_engineer-max-http.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { engineerSupportAnswer } from './_engineer-support.js';
@@ -39,7 +40,7 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=en
   const token=engineerMaxToken(env);
   const secret=engineerMaxSecret(env);
   const expected=engineerMaxWebhookUrl(req);
-  const out={checkoutVersion:'chat-v2-legacy-bridge',checkoutStoreReadable:false,tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false,diagnostic:{stage:'configuration',httpStatus:null,errorCode:null}};
+  const out={checkoutVersion:'chat-v3-native-files',checkoutStoreReadable:false,tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false,diagnostic:{stage:'configuration',httpStatus:null,errorCode:null}};
   if(!out.tokenConfigured||!out.webhookSecretConfigured)return out;
   try{
     out.diagnostic.stage='identity';
@@ -51,6 +52,9 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=en
     out.username=String(me?.username||'');
     const expectedUsername=String(env.MAX_BOT_URL||'https://max.ru/se13638142_1_bot').split('/').pop()?.split('?')[0];
     if(out.username!==expectedUsername){out.identityVerified=false;out.diagnostic.errorCode='BOT_IDENTITY_MISMATCH';return out;}
+    if(req.query?.maxAsset&&['starter','autocad','primavera','bundle'].includes(req.query.maxAsset)){
+      try{await prepareMaxAsset(req.query.maxAsset);out.assetPrepared=req.query.maxAsset;}catch(e){out.assetError=String(e.message).replace(/[^a-zA-Z0-9_.-]/g,'').slice(0,100);}
+    }
     if(out.username)out.botUrl='https://max.ru/'+out.username;
     out.profileDescriptionConfigured=Boolean(String(me?.description||'').trim());
     out.profileAvatarConfigured=Boolean(String(me?.avatar_url||me?.full_avatar_url||'').trim());
@@ -59,7 +63,8 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=en
       {name:'start',description:'Начать'},
       {name:'free',description:'Бесплатный старт'},
       {name:'courses',description:'Курсы и цены'},
-      {name:'support',description:'Задать вопрос'}
+      {name:'support',description:'Задать вопрос'},
+      {name:'access',description:'Проверить оплату и получить файлы'}
     ];
     const currentCommands=Array.isArray(me?.commands)?me.commands.map(x=>({
       name:String(x?.name||''),description:String(x?.description||'')
@@ -167,13 +172,13 @@ export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engi
   try{update=await readJson(req)}catch{return json(res,400,{error:'invalid_update'})}
   let reply;
   try{
-    reply=await engineerMaxCheckout(update,{
+    reply=await maxAccessReply(update)||await engineerMaxCheckout(update,{
       loadSession:loadMaxSession,saveSession:saveMaxSession,
       canPay:async()=>String(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase()==='tbank'&&tbankEnv()==='production'&&Boolean((await npdSessionStatus()).connected),
-      createPayment:async(body)=>{
+      createPayment:async(body,userId)=>{
         let status=200,data;
         const response={status(n){status=n;return this},setHeader(){return this},end(raw){data=JSON.parse(raw)}};
-        await createPayment({method:'POST',headers:{host:'inzhener-s-nulya.vercel.app','x-forwarded-proto':'https'},body},response);
+        await createPayment({engineerMaxUserId:userId,method:'POST',headers:{host:'inzhener-s-nulya.vercel.app','x-forwarded-proto':'https'},body},response);
         if(status!==200||!data?.paymentUrl)throw new Error('max_payment_init_failed');
         return data;
       }
@@ -201,5 +206,34 @@ export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engi
   }catch(e){
     console.error('max_webhook_failed',String(e?.message||e));
     return json(res,502,{error:'max_unavailable'});
+  }
+}
+
+
+async function maxAccessReply(update){
+  const m=update?.message;
+  const userId=Number(update?.update_type==='bot_started'?update.user?.user_id:m?.sender?.user_id);
+  if(!Number.isSafeInteger(userId)||userId<=0)return null;
+  if(update.update_type==='message_created'&&(m?.sender?.is_bot||m?.recipient?.chat_type!=='dialog'))return null;
+  const input=String(update.update_type==='bot_started'?update.payload:m?.body?.text||'').trim();
+  const isCheck=['access','/access','/start access','Проверить оплату'].includes(input);
+  let url;
+  try{const u=new URL(input);if(u.origin===SITE&&u.pathname==='/order.html')url=u;}catch{}
+  if(!isCheck&&!url)return null;
+  const session=await loadMaxSession(userId);
+  const orderId=url?.searchParams.get('orderId')||session?.lastOrderId;
+  const reply=text=>({userId,text,attachments:[]});
+  if(!orderId)return reply('У старого заказа нет привязки к этому чату. Если уже оплатили, скопируйте полный адрес страницы заказа из адресной строки браузера после оплаты и отправьте его обычным сообщением в этот чат MAX. Открывать сайт для этого не нужно. Повторно не платите.');
+  try{
+    const result=await deliverMaxOrder(orderId,{userId,accessToken:url?.searchParams.get('token'),productCode:url?.searchParams.get('product'),force:!url});
+    if(result.state==='paid'){
+      await saveMaxSession(userId,{...session,lastOrderId:orderId});
+      return result.alreadyDelivered?reply('Материалы уже отправлены в этот чат. Для повторной выдачи напишите /access.'):reply('Оплата подтверждена. Материалы отправлены файлом в этот чат MAX.');
+    }
+    if(result.state==='pending')return reply('Банк пока не подтвердил оплату. После подтверждения файл придёт автоматически. Если деньги уже списались, повторно не платите. Нажмите «Проверить оплату» через минуту.');
+    return reply('Банк не подтвердил успешную оплату этого заказа. Повторно не платите, если деньги уже списались: напишите об этом сообщением.');
+  }catch(e){
+    if(['order_access_required','order_owner_mismatch','order_not_found'].includes(e.message))return reply('Не удалось проверить доступ к заказу. Отправьте полный адрес страницы заказа из адресной строки браузера обычным сообщением в этот чат MAX. Повторно не платите.');
+    throw e;
   }
 }

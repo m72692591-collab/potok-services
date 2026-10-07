@@ -15,7 +15,7 @@ function confirmation(s){
   ])};
 }
 function paymentReply(s){
-  return {text:CATALOG[s.product].title+' — '+price(s.product)+' ₽\n\nОплата подготовлена. Кнопка ниже открывает защищённую страницу Т-Банка. После оплаты вернитесь на страницу заказа по кнопке банка — там автоматически появятся материалы. Если деньги уже списались, повторно не оплачивайте.',attachments:buttons([[{type:'link',text:'Оплатить '+price(s.product)+' ₽',url:s.paymentUrl}]])};
+  return {text:CATALOG[s.product].title+' — '+price(s.product)+' ₽\n\nОплата подготовлена. Кнопка ниже открывает защищённую страницу Т-Банка. После подтверждения оплаты бот пришлёт материалы файлом в этот чат MAX. Можно закрыть браузер и вернуться в чат. Для проверки нажмите «Проверить оплату». Если деньги уже списались, повторно не оплачивайте.',attachments:buttons([[{type:'link',text:'Оплатить '+price(s.product)+' ₽',url:s.paymentUrl}],[{type:'message',text:'Проверить оплату'}]])};
 }
 
 // Receives only messages in a private dialog. All persistent state is injected.
@@ -44,7 +44,7 @@ export async function engineerMaxCheckout(update,{loadSession,saveSession,create
   if(selected){
     const previous=await loadSession(userId);
     await saveSession(userId,{source:previous?.source||'bot',product:selected,phase:'contact',expiresAt:now()+TTL});
-    return reply({text:CATALOG[selected].title+' — '+price(selected)+' ₽\n\nДля оплаты и электронного чека напишите свой email или номер телефона обычным сообщением в этом чате MAX.\n\nНажмите поле сообщения, введите email или телефон и отправьте сообщение. Например: name@example.com или +79991234567.\n\nКнопка «Политика данных» открывает документ для ознакомления. Для ввода email или телефона нажимать её не нужно.\n\nКонтакт используется для оформления заказа и чека согласно политике ниже. Следующий шаг — подтверждение условий и оплата Т-Банка.',attachments:buttons([[{type:'link',text:'Персональные данные',url:SITE+'/privacy'}],cancel()])});
+    return reply({text:CATALOG[selected].title+' — '+price(selected)+' ₽\n\nДля оплаты и электронного чека напишите свой email или номер телефона обычным сообщением в этом чате MAX.\n\nНажмите поле сообщения, введите email или телефон и отправьте сообщение. Например: name@example.com или +79991234567.\n\nКнопка «Политика данных» открывает документ для ознакомления. Для ввода email или телефона нажимать её не нужно.\n\nКонтакт используется для оформления заказа и чека согласно политике ниже. Следующий шаг — подтверждение условий и оплата Т-Банка.',attachments:buttons([[{type:'link',text:'Политика данных',url:SITE+'/privacy'}],cancel()])});
   }
   if(input==='/start'||input==='/courses'||input==='/cancel'||input==='Отменить оформление'){
     const previous=await loadSession(userId);
@@ -75,10 +75,10 @@ export async function engineerMaxCheckout(update,{loadSession,saveSession,create
   if(!await canPay())return reply({text:'Оплата временно недоступна. Попробуйте позднее — сейчас деньги не списываются.',attachments:[]});
   await saveSession(userId,{...s,phase:'creating'});
   try{
-    const result=await createPayment({product:s.product,contact:s.contact,acceptTerms:true,termsVersion:'2026-09-24',attribution:{src:'max_'+String(s.source||'bot').replace(/[^A-Za-z0-9_-]/g,'').slice(0,80)}});
+    const result=await createPayment({product:s.product,contact:s.contact,acceptTerms:true,termsVersion:'2026-09-24',attribution:{src:'max_'+String(s.source||'bot').replace(/[^A-Za-z0-9_-]/g,'').slice(0,80)}},userId);
     const url=new URL(result?.paymentUrl);
     if(url.protocol!=='https:')throw new Error('invalid_payment_url');
-    const next={source:s.source,product:s.product,phase:'ready',paymentUrl:url.toString(),expiresAt:s.expiresAt};
+    const next={source:s.source,product:s.product,phase:'ready',paymentUrl:url.toString(),lastOrderId:result.orderId,expiresAt:s.expiresAt};
     await saveSession(userId,next);
     return reply(paymentReply(next));
   }catch{
@@ -86,3 +86,4 @@ export async function engineerMaxCheckout(update,{loadSession,saveSession,create
     return reply({text:'Не удалось подготовить оплату. Деньги не списаны. Можно повторить подтверждение условий.',attachments:confirmation(s).attachments});
   }
 }
+

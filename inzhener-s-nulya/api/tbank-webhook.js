@@ -1,3 +1,4 @@
+import { deliverMaxOrder } from './_engineer-max-delivery.js';
 import{CATALOG,readJson}from'./_shared.js';
 import{safeTbankState,tbankCall,verifyTbankNotification}from'./_tbank.js';
 import{getTbankPayment,saveTbankPayment}from'./_tbank-payments.js';
@@ -51,6 +52,7 @@ export default async function handler(req,res){
       if(status==='CONFIRMED'){
         try{
           await ensureNpdReceiptForOrder(orderId);
+          if(ref.maxUserId)await deliverMaxOrder(orderId);
         }catch(ne){
           console.error('npd_auto_receipt_failed',String(ne?.message||ne),ne?.status||'',ne?.details||'');
           res.status(503).setHeader('content-type','text/plain; charset=utf-8').end('RETRY');
@@ -72,3 +74,4 @@ export default async function handler(req,res){
     res.status(500).setHeader('content-type','text/plain; charset=utf-8').end('ERROR');
   }
 }
+
