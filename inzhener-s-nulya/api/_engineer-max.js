@@ -1,3 +1,5 @@
+import { engineerMaxAccess } from './_engineer-max-access.js';
+import { findMaxOrders,recordMaxAccessHealth,maxAccessHealth } from './_engineer-max-order-history.js';
 import { bilingualText,LANGUAGE_NOTE } from './_engineer-language.js';
 import { deliverMaxOrder,prepareMaxAsset } from './_engineer-max-delivery.js';
 import { engineerMaxFetch } from './_engineer-max-http.js';
@@ -41,7 +43,8 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=en
   const token=engineerMaxToken(env);
   const secret=engineerMaxSecret(env);
   const expected=engineerMaxWebhookUrl(req);
-  const out={languageVersion:'en-ru-v1',checkoutVersion:'chat-v3-native-files',checkoutStoreReadable:false,tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false,diagnostic:{stage:'configuration',httpStatus:null,errorCode:null}};
+  const out={accessVersion:'access-v2-order-history',languageVersion:'en-ru-v1',checkoutVersion:'chat-v3-native-files',checkoutStoreReadable:false,tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false,diagnostic:{stage:'configuration',httpStatus:null,errorCode:null}};
+  try{out.accessHealth=await maxAccessHealth();}catch{out.accessHealth={result:'health_unavailable'};}
   if(!out.tokenConfigured||!out.webhookSecretConfigured)return out;
   try{
     out.diagnostic.stage='identity';
@@ -211,30 +214,4 @@ export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engi
 }
 
 
-async function maxAccessReply(update){
-  const m=update?.message;
-  const userId=Number(update?.update_type==='bot_started'?update.user?.user_id:m?.sender?.user_id);
-  if(!Number.isSafeInteger(userId)||userId<=0)return null;
-  if(update.update_type==='message_created'&&(m?.sender?.is_bot||m?.recipient?.chat_type!=='dialog'))return null;
-  const input=String(update.update_type==='bot_started'?update.payload:m?.body?.text||'').trim();
-  const isCheck=['access','/access','/start access','Проверить оплату'].includes(input);
-  let url;
-  try{const u=new URL(input);if(u.origin===SITE&&u.pathname==='/order.html')url=u;}catch{}
-  if(!isCheck&&!url)return null;
-  const session=await loadMaxSession(userId);
-  const orderId=url?.searchParams.get('orderId')||session?.lastOrderId;
-  const reply=text=>({userId,text,attachments:[]});
-  if(!orderId)return reply('У старого заказа нет привязки к этому чату. Если уже оплатили, скопируйте полный адрес страницы заказа из адресной строки браузера после оплаты и отправьте его обычным сообщением в этот чат MAX. Открывать сайт для этого не нужно. Повторно не платите.');
-  try{
-    const result=await deliverMaxOrder(orderId,{userId,accessToken:url?.searchParams.get('token'),productCode:url?.searchParams.get('product'),force:!url});
-    if(result.state==='paid'){
-      await saveMaxSession(userId,{...session,lastOrderId:orderId});
-      return result.alreadyDelivered?reply('Материалы уже отправлены в этот чат. Для повторной выдачи напишите /access.'):reply('Оплата подтверждена. Материалы отправлены файлом в этот чат MAX.');
-    }
-    if(result.state==='pending')return reply('Банк пока не подтвердил оплату. После подтверждения файл придёт автоматически. Если деньги уже списались, повторно не платите. Нажмите «Проверить оплату» через минуту.');
-    return reply('Банк не подтвердил успешную оплату этого заказа. Повторно не платите, если деньги уже списались: напишите об этом сообщением.');
-  }catch(e){
-    if(['order_access_required','order_owner_mismatch','order_not_found'].includes(e.message))return reply('Не удалось проверить доступ к заказу. Отправьте полный адрес страницы заказа из адресной строки браузера обычным сообщением в этот чат MAX. Повторно не платите.');
-    throw e;
-  }
-}
+async function maxAccessReply(update){return engineerMaxAccess(update,{loadSession:loadMaxSession,findOrders:findMaxOrders,deliver:deliverMaxOrder,saveSession:saveMaxSession,record:recordMaxAccessHealth});}

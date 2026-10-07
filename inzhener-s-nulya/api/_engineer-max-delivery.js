@@ -63,17 +63,18 @@ export async function deliverMaxOrder(orderId,{userId,accessToken,productCode,fo
     if(order.maxUserId&&Number(order.maxUserId)!==userId)throw new Error('order_owner_mismatch');
     if(!order.maxUserId&&!(productCode===order.product&&d.verify(orderId,productCode,accessToken)))throw new Error('order_access_required');
   }else if(!Number.isSafeInteger(order.maxUserId)||order.maxUserId<=0)throw new Error('order_owner_missing');
-  const checked=d.check(await d.state('GetState',{TerminalKey:process.env.TBANK_TERMINAL_KEY,PaymentId:String(order.paymentId)}),product,orderId,String(order.paymentId));
+  let checked;try{checked=d.check(await d.state('GetState',{TerminalKey:process.env.TBANK_TERMINAL_KEY,PaymentId:String(order.paymentId)}),product,orderId,String(order.paymentId));}catch(e){e.deliveryStage='payment';throw e;}
   if(checked.state!=='paid')return checked;
   if(!order.maxUserId)order=await d.save(orderId,{maxUserId:userId});
   if(order.maxDeliveredAt&&!force)return{state:'paid',delivered:true,alreadyDelivered:true};
-  await d.receipt(orderId);
-  const asset=await d.asset(order.product);
+  try{await d.receipt(orderId);}catch(e){e.deliveryStage='receipt';throw e;}
+  let asset;try{asset=await d.asset(order.product);}catch(e){e.deliveryStage='asset';throw e;}
   let message;
   for(let i=0;i<4;i++){
     try{message=await d.send('/messages?user_id='+order.maxUserId,{text:'Оплата подтверждена. '+product.title+'\n\nМатериалы — в ZIP-файле ниже. Скачайте архив и распакуйте его. '+(order.product==='starter'?'Откройте first-engineer-workday.html из архива: практикум работает на компьютере без подключения к сайту.':'Откройте инструкцию внутри архива на компьютере.')+'\n\nСохраните файл. Для повторной выдачи напишите /access. Вопросы можно написать обычным сообщением в этом чате.',attachments:[{type:'file',payload:{token:asset.token}}]});break;}
-    catch(e){if(!String(e.message).includes('attachment.not.ready')||i===3)throw e;await new Promise(r=>setTimeout(r,1000*2**i));}
+    catch(e){e.deliveryStage='send';if(!String(e.message).includes('attachment.not.ready')||i===3)throw e;await new Promise(r=>setTimeout(r,1000*2**i));}
   }
   await d.save(orderId,{maxDeliveredAt:Date.now(),maxDeliveryMessageId:message?.message?.body?.mid||message?.body?.mid||'',maxDeliveryStatus:'delivered'});
   return{state:'paid',delivered:true};
 }
+

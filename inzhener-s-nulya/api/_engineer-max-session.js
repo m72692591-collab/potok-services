@@ -15,6 +15,7 @@ export async function loadMaxSession(userId){
 }
 export async function saveMaxSession(userId,data){
   const previous=await loadMaxSession(userId);
-  await put(sessionPath(userId),JSON.stringify({...data,lastOrderId:data.lastOrderId||previous?.lastOrderId}),{access:'private',addRandomSuffix:false,allowOverwrite:true,contentType:'application/json',...blobAuth()});
+  await put(sessionPath(userId),JSON.stringify({...data,lastOrderId:data.lastOrderId||previous?.lastOrderId,paidOrderIds:data.paidOrderIds||previous?.paidOrderIds||[]}),{access:'private',addRandomSuffix:false,allowOverwrite:true,contentType:'application/json',...blobAuth()});
 }
+
 
