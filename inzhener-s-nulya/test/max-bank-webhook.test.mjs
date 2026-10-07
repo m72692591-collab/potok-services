@@ -1,0 +1,12 @@
+import {readFile} from 'node:fs/promises';import assert from 'node:assert/strict';
+let source=await readFile('max-delivery/api/tbank-webhook.js','utf8');source=source.replace(/^import.*;\n/gm,'');
+globalThis.hookTest={delivered:0,receipt:0,status:'CONFIRMED',maxUserId:100,valid:true,failure:false};
+const mock=`const CATALOG={starter:{price:490}},readJson=async req=>req.body,verifyTbankNotification=()=>hookTest.valid,getTbankPayment=async()=>({product:'starter',paymentId:'123',maxUserId:hookTest.maxUserId}),saveTbankPayment=async()=>{},tbankCall=async()=>({}),safeTbankState=()=>({state:hookTest.status==='CONFIRMED'?'paid':'failed',paymentStatus:hookTest.status}),ensureNpdReceiptForOrder=async()=>{hookTest.receipt++},cancelNpdReceiptForOrder=async()=>{},deliverMaxOrder=async()=>{if(hookTest.failure)throw new Error('send_failed');hookTest.delivered++};`;
+const {default:handler}=await import('data:text/javascript;base64,'+Buffer.from(mock+source).toString('base64'));
+const call=async()=>{const res={status(n){this.code=n;return this},setHeader(){return this},end(s){this.body=s;return this}};await handler({method:'POST',body:{OrderId:'order',PaymentId:'123'}},res);return res;};
+assert.equal((await call()).body,'OK');assert.equal(hookTest.delivered,1);assert.equal(hookTest.receipt,1);
+hookTest.failure=true;assert.equal((await call()).code,503);
+hookTest.failure=false;hookTest.maxUserId=null;assert.equal((await call()).body,'OK');assert.equal(hookTest.delivered,1);
+hookTest.maxUserId=100;hookTest.status='REFUNDED';await call();assert.equal(hookTest.delivered,1);
+hookTest.valid=false;assert.equal((await call()).code,403);assert.equal(hookTest.delivered,1);
+console.log('PASS: signed bank webhook triggers native delivery, retry on send failure, site orders unchanged, refunds and unsigned notifications never deliver');

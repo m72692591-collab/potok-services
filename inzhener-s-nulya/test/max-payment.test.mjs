@@ -1,0 +1,13 @@
+import {readFile} from 'node:fs/promises';import assert from 'node:assert/strict';
+let source=await readFile('max-delivery/api/create-payment.js','utf8');
+source=source.replace(/^import.*;\n/gm,'');
+const shared=await readFile('max-delivery/api/_shared.js','utf8');
+const catalog=shared.match(/export const CATALOG=([\s\S]*?);\nexport function/)[1];
+globalThis.paymentTest={saved:null,init:null,fail:false};
+const mocks="import crypto from 'node:crypto';const CATALOG="+catalog+`;const baseUrl=()=> 'https://inzhener-s-nulya.vercel.app',json=(res,status,body)=>{res.status=status;res.body=body;},readJson=async req=>req.body,signOrder=()=> 'signed',validateContact=x=>x,requirePayKey=()=> '',yandexApiBase=()=> '';const initTbankPayment=async data=>{globalThis.paymentTest.init=data;return {paymentUrl:'https://securepay.tinkoff.ru/payment',paymentId:'123',status:'NEW'};};const saveTbankPayment=async(id,data)=>{if(globalThis.paymentTest.fail)throw new Error('storage');globalThis.paymentTest.saved=data;};`;
+const {default:handler}=await import('data:text/javascript;base64,'+Buffer.from(mocks+source).toString('base64'));
+process.env.PAYMENT_PROVIDER='tbank';const body={product:'starter',contact:'a@b.ru',acceptTerms:true,termsVersion:'2026-09-24',maxUserId:777};
+let res={};await handler({method:'POST',body},res);assert.equal(res.status,200);assert.ok(!paymentTest.saved.maxUserId);assert.ok(!paymentTest.init.successUrl);
+res={};await handler({method:'POST',body,engineerMaxUserId:100},res);assert.equal(res.status,200);assert.equal(paymentTest.saved.maxUserId,100);assert.equal(paymentTest.init.successUrl,'https://max.ru/se13638142_1_bot?start=access');assert.equal(paymentTest.init.failUrl,paymentTest.init.successUrl);assert.equal(paymentTest.init.amount,490);assert.ok(res.body.orderId);
+paymentTest.fail=true;res={};await handler({method:'POST',body,engineerMaxUserId:100},res);assert.equal(res.status,500);assert.ok(!res.body.paymentUrl);
+console.log('PASS: private trusted MAX binding, public payload cannot bind, MAX bank return, unchanged price, fail closed on storage failure');
