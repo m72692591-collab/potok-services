@@ -10,7 +10,7 @@ const accept=p=>'Принимаю · '+price(p)+' ₽';
 function confirmation(s){
   return {text:CATALOG[s.product].title+' — '+price(s.product)+' ₽\n\nКонтакт для чека: '+s.contact+'\n\nНажимая «'+accept(s.product)+'», вы принимаете публичную оферту, условия возврата и политику обработки персональных данных. После успешной оплаты доступ к цифровому товару предоставляется сразу.\n\nЗатем появится кнопка оплаты Т-Банка.',attachments:buttons([
     [{type:'link',text:'Оферта и возврат',url:SITE+'/offer'}],
-    [{type:'link',text:'Персональные данные',url:SITE+'/privacy'}],
+    [{type:'link',text:'Политика данных',url:SITE+'/privacy'}],
     [{type:'message',text:accept(s.product)}],cancel()
   ])};
 }
@@ -44,7 +44,7 @@ export async function engineerMaxCheckout(update,{loadSession,saveSession,create
   if(selected){
     const previous=await loadSession(userId);
     await saveSession(userId,{source:previous?.source||'bot',product:selected,phase:'contact',expiresAt:now()+TTL});
-    return reply({text:CATALOG[selected].title+' — '+price(selected)+' ₽\n\nДля оплаты и электронного чека отправьте сюда свой email или телефон. Например: name@example.com или +79991234567.\n\nКонтакт используется для оформления заказа и чека согласно политике ниже. Следующий шаг — подтверждение условий и оплата Т-Банка.',attachments:buttons([[{type:'link',text:'Персональные данные',url:SITE+'/privacy'}],cancel()])});
+    return reply({text:CATALOG[selected].title+' — '+price(selected)+' ₽\n\nДля оплаты и электронного чека напишите свой email или номер телефона обычным сообщением в этом чате MAX.\n\nНажмите поле сообщения, введите email или телефон и отправьте сообщение. Например: name@example.com или +79991234567.\n\nКнопка «Политика данных» открывает документ для ознакомления. Для ввода email или телефона нажимать её не нужно.\n\nКонтакт используется для оформления заказа и чека согласно политике ниже. Следующий шаг — подтверждение условий и оплата Т-Банка.',attachments:buttons([[{type:'link',text:'Персональные данные',url:SITE+'/privacy'}],cancel()])});
   }
   if(input==='/start'||input==='/courses'||input==='/cancel'||input==='Отменить оформление'){
     const previous=await loadSession(userId);
@@ -60,7 +60,7 @@ export async function engineerMaxCheckout(update,{loadSession,saveSession,create
   if(input.startsWith('/')||input==='💬 Задать вопрос')return null;
   if(s.phase==='contact'){
     const contact=validateContact(input);
-    if(!contact)return reply({text:'Для чека нужен email или телефон. Отправьте только контакт, либо нажмите «Отменить оформление».',attachments:buttons([cancel()])});
+    if(!contact)return reply({text:'Напишите свой email или номер телефона обычным сообщением в этом чате MAX. В сообщении укажите только email или телефон, например name@example.com или +79991234567. Для отмены нажмите «Отменить оформление».',attachments:buttons([cancel()])});
     const next={...s,contact,phase:'consent'};
     await saveSession(userId,next);
     return reply(confirmation(next));
