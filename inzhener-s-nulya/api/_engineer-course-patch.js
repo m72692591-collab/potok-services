@@ -12,7 +12,7 @@ export function patchCourse(bytes,files){
  function walk(raw,depth=0){
   const entries=readZip(raw);let edited=false;
   for(const entry of entries){
-   const candidates=files.filter(f=>entry.name.normalize('NFC').endsWith(f.name.split('/').pop().normalize('NFC')));
+   const candidates=files.filter(f=>entry.name.normalize('NFC')===f.name.normalize('NFC')||entry.name.normalize('NFC').endsWith('/'+f.name.normalize('NFC')));
    if(candidates.length){
     const hash=sha256(entry.data);const f=candidates.find(f=>hash===f.before||hash===f.after);
     if(!f)throw new Error('course_revision_mismatch');counts.set(f.name,counts.get(f.name)+1);

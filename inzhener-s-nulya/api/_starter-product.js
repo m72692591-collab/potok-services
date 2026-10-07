@@ -34,7 +34,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid 
 
 <div class="card">
 <h2>Как проходить</h2>
-<p class="note">${LANGUAGE_NOTE}</p>
+<p class="note">___LANGUAGE_NOTE___</p>
 <p>Заложите 2–3 часа. Не читайте всё подряд: выполняйте шаг, сохраняйте результат, только потом переходите дальше. Если одной из программ у вас нет, выполните доступную часть и используйте второй блок как чек-лист на будущее.</p>
 <ul class="check">
 <li>Создайте отдельную папку <b>ИНЖЕНЕР_ДЕНЬ_1</b>.</li>
@@ -141,7 +141,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid 
 
 <p class="mut">Материал предназначен для самостоятельного обучения. Он не является программой повышения квалификации, не заменяет обязательную проектную/рабочую/исполнительную документацию и не включает лицензии AutoCAD или Primavera P6.</p>
 </div></main>
-</body></html>`);
+</body></html>`).replace('___LANGUAGE_NOTE___',esc(LANGUAGE_NOTE));
 }
 
 
