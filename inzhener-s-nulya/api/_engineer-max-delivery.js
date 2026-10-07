@@ -30,7 +30,7 @@ export function starterZip(){
 export async function prepareMaxAsset(code){
   const p=CATALOG[code];if(!p||p.controlOnly)throw new Error('invalid_product');
   await identity();
-  const path='_max_assets/chat-files-v1/'+code+'.json';
+  const path='_max_assets/chat-files-enru-v1/'+code+'.json';
   const cached=await get(path,{access:'private',useCache:false,...blobAuth()});
   if(cached?.statusCode===200){const asset=JSON.parse(await new Response(cached.stream).text());if(asset.token&&asset.bot===BOT)return asset;}
   let bytes;
