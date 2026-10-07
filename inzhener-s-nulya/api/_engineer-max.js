@@ -39,7 +39,7 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=en
   const token=engineerMaxToken(env);
   const secret=engineerMaxSecret(env);
   const expected=engineerMaxWebhookUrl(req);
-  const out={tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false,diagnostic:{stage:'configuration',httpStatus:null,errorCode:null}};
+  const out={checkoutVersion:'chat-v2-legacy-bridge',checkoutStoreReadable:false,tokenConfigured:Boolean(token),webhookSecretConfigured:/^[A-Za-z0-9_-]{5,256}$/.test(secret),identityVerified:false,username:'',botUrl:'',profileDescriptionConfigured:false,profileAvatarConfigured:false,commandsConfigured:false,commandsAutoConfigured:false,webhookConfigured:false,webhookMatchesExpected:false,autoConfigured:false,diagnostic:{stage:'configuration',httpStatus:null,errorCode:null}};
   if(!out.tokenConfigured||!out.webhookSecretConfigured)return out;
   try{
     out.diagnostic.stage='identity';
@@ -96,6 +96,7 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=en
       }
     }
     out.diagnostic.stage='complete';
+    try{await loadMaxSession(0);out.checkoutStoreReadable=true}catch{}
     return out;
   }catch(error){
     const code=String(error?.cause?.code||error?.code||error?.name||'unknown');
