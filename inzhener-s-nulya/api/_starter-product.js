@@ -2,7 +2,7 @@ const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 
 export function starterProductHtml(orderId=''){
   const order=esc(orderId);
-  return \`<!doctype html>
+  return `<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -27,7 +27,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid 
 <span class="tag">Практикум · 490 ₽</span>
 <h1>Первый рабочий день инженера</h1>
 <p>Короткий практический маршрут по двум инструментам: AutoCAD для чертежей и исполнительной документации и Primavera P6 для календарного планирования. Цель — не «изучить программы», а за один рабочий подход получить два проверяемых результата.</p>
-<p class="mut" style="color:#b9c9d7">Заказ: \${order}</p>
+<p class="mut" style="color:#b9c9d7">Заказ: ${order}</p>
 </div></section>
 <main><div class="w">
 
@@ -139,5 +139,6 @@ table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid 
 
 <p class="mut">Материал предназначен для самостоятельного обучения. Он не является программой повышения квалификации, не заменяет обязательную проектную/рабочую/исполнительную документацию и не включает лицензии AutoCAD или Primavera P6.</p>
 </div></main>
-</body></html>\`;
+</body></html>`;
 }
+
