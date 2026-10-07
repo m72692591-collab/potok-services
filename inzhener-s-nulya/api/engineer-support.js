@@ -1,4 +1,6 @@
 import crypto from'node:crypto';
+import coursePatch from './_engineer-course-patch-endpoint.js';
+export const config={api:{bodyParser:false}};
 import{put}from'@vercel/blob';
 import{json,readJson}from'./_shared.js';
 import{blobAuth}from'./_blob-auth.js';
@@ -45,6 +47,7 @@ async function recordEvent(req,res){
 
 export default async function handler(req,res){
   if(req.method!=='POST')return json(res,405,{error:'method_not_allowed'});
+  if(req.query?.channel==='course-patch')return coursePatch(req,res);
   if(req.query?.channel==='telegram')return engineerTelegramWebhook(req,res);
   if(req.query?.channel==='max')return engineerMaxWebhook(req,res);
   if(req.query?.channel==='event')return recordEvent(req,res);
