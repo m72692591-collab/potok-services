@@ -1,3 +1,4 @@
+import { WELCOME,COURSE_MENU,PRODUCT_DETAILS } from './_engineer-product-copy.js';
 import { bilingualText,LANGUAGE_NOTE } from './_engineer-language.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { engineerSupportAnswer } from './_engineer-support.js';
@@ -119,6 +120,8 @@ export function engineerTelegramReply(update) {
 
   const keyboard = {
     keyboard: [
+      [{text:'📂 Что внутри курсов'}],
+      [{text:'📐 Программа AutoCAD'},{text:'📅 Программа Primavera P6'}],
       [{ text: '🎁 Бесплатный старт' }, { text: '⚡ Практикум 490 ₽' }],
       [{ text: '📐 AutoCAD 1 990 ₽' }, { text: '📅 Primavera P6 2 490 ₽' }],
       [{ text: '📦 Комплект 3 490 ₽' }],
@@ -130,6 +133,9 @@ export function engineerTelegramReply(update) {
 
   const aliases = {
     '/engineer': '/start',
+    '📂 Что внутри курсов':'/demo',
+    '📐 Программа AutoCAD':'/program_autocad',
+    '📅 Программа Primavera P6':'/program_primavera',
     '/engineer_autocad': '/autocad',
     '/engineer_primavera': '/primavera',
     '/engineer_both': '/courses',
@@ -141,20 +147,32 @@ export function engineerTelegramReply(update) {
     '💬 Задать вопрос': '/support'
   };
   const command = aliases[input] || aliases[commandRaw] || commandRaw;
-  const fromAd = source.startsWith('vk_') || source.startsWith('tgads_') || source.startsWith('ad_');
 
   const replies = {
-    '/start': fromAd
-      ? `Инженер с нуля 👷\n\nВы пришли из рекламы — сайт открывать не нужно. Всё начинается здесь, в Telegram.\n\nМожно бесплатно попробовать две короткие задачи, купить практикум за 490 ₽ или сразу выбрать полный курс. Нажмите кнопку ниже.`
-      : `Инженер с нуля 👷\n\nAutoCAD и Primavera P6 с нуля по рабочим задачам. Бесплатный старт, практикум 490 ₽ и полные курсы — выберите кнопку ниже.`,
+    '/start': WELCOME,
+    '/demo': COURSE_MENU,
+    '/program_autocad': PRODUCT_DETAILS.autocad,
+    '/program_primavera': PRODUCT_DETAILS.primavera,
     '/free': `Бесплатный старт — прямо здесь.\n\nAutoCAD: откройте учебный DWG/DXF, измерьте один известный размер командой _DIST, проверьте слой объекта и поставьте контрольный размер _DIM.\n\nPrimavera P6: создайте учебный Project, WBS из 3 блоков и 3 Activities, задайте длительности и свяжите их FS.\n\nЕсли получилось — практикум 490 ₽ даст полный «первый рабочий день» по обоим инструментам.`,
-    '/autocad': `AutoCAD: начните с бесплатной задачи — DIST → слой → DIM. Если нужен полный путь от нуля до исполнительных схем, курс стоит ${CATALOG.autocad.price.toLocaleString('ru-RU')} ₽.\n\nКупить: ${buyUrl('autocad')}`,
-    '/primavera': `Primavera P6: начните с Project → WBS → 3 Activities → связи FS. Полный 14-дневный курс стоит ${CATALOG.primavera.price.toLocaleString('ru-RU')} ₽.\n\nКупить: ${buyUrl('primavera')}`,
-    '/starter': `«Первый рабочий день инженера» — AutoCAD + Primavera P6 за ${CATALOG.starter.price.toLocaleString('ru-RU')} ₽. Практика на 2–3 часа, два проверяемых результата и чек-лист ошибок.\n\nОплатить 490 ₽: ${buyUrl('starter')}`,
-    '/autocad_paid': `AutoCAD с нуля для стройки и исполнительной документации — 21 день, ${CATALOG.autocad.price.toLocaleString('ru-RU')} ₽.\n\nОплатить: ${buyUrl('autocad')}`,
-    '/primavera_paid': `Primavera P6 с нуля для строительства — 14 дней, ${CATALOG.primavera.price.toLocaleString('ru-RU')} ₽.\n\nОплатить: ${buyUrl('primavera')}`,
-    '/bundle': `Комплект AutoCAD + Primavera P6 — оба полных курса за ${CATALOG.bundle.price.toLocaleString('ru-RU')} ₽.\n\nОплатить: ${buyUrl('bundle')}`,
-    '/courses': `Первый рабочий день инженера — ${CATALOG.starter.price.toLocaleString('ru-RU')} ₽\nAutoCAD — ${CATALOG.autocad.price.toLocaleString('ru-RU')} ₽\nPrimavera P6 — ${CATALOG.primavera.price.toLocaleString('ru-RU')} ₽\nКомплект — ${CATALOG.bundle.price.toLocaleString('ru-RU')} ₽\n\nДля покупки нажмите нужную кнопку в меню ниже.`,
+    '/autocad': PRODUCT_DETAILS.autocad+`
+
+Купить: ${buyUrl('autocad')}`,
+    '/primavera': PRODUCT_DETAILS.primavera+`
+
+Купить: ${buyUrl('primavera')}`,
+    '/starter': PRODUCT_DETAILS.starter+`
+
+Купить: ${buyUrl('starter')}`,
+    '/autocad_paid': PRODUCT_DETAILS.autocad+`
+
+Купить: ${buyUrl('autocad')}`,
+    '/primavera_paid': PRODUCT_DETAILS.primavera+`
+
+Купить: ${buyUrl('primavera')}`,
+    '/bundle': PRODUCT_DETAILS.bundle+`
+
+Купить: ${buyUrl('bundle')}`,
+    '/courses': COURSE_MENU,
     '/support': `Просто напишите вопрос сюда обычным сообщением. Я отвечу по AutoCAD, Primavera P6, выбору курса, оплате и доступу. Владелец проекта вручную подключаться не должен.`,
     '/access': `После оплаты банк подтвердит платёж, чек НПД сформируется автоматически, а на странице заказа появится защищённая выдача материалов. Если деньги списались, не оплачивайте повторно — напишите сюда, что произошло.`
   };
@@ -196,4 +214,5 @@ export async function engineerTelegramWebhook(req, res, {
   // Telegram executes this reply. A 200 alone does not prove message delivery.
   return json(res, 200, engineerTelegramReply(update) || { ok: true });
 }
+
 

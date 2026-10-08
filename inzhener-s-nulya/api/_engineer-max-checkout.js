@@ -1,3 +1,4 @@
+import { COURSE_MENU,PRODUCT_DETAILS } from './_engineer-product-copy.js';
 import { CATALOG, validateContact } from './_shared.js';
 
 const SITE='https://inzhener-s-nulya.vercel.app';
@@ -39,12 +40,13 @@ export async function engineerMaxCheckout(update,{loadSession,saveSession,create
   const aliases={'/starter':'starter','/buy_starter':'starter','купить 490':'starter','⚡ Первый рабочий день — 490 ₽':'starter','/autocad_paid':'autocad','/primavera_paid':'primavera','/bundle':'bundle'};
   if(aliases[input])input=MAX_BUY_LABELS[aliases[input]];
   if(!input)return null;
+  if(['📂 Что внутри курсов','📐 Программа AutoCAD','📅 Программа Primavera P6','/demo','/program_autocad','/program_primavera'].includes(input))return null;
   const reply=r=>({userId,...r});
   const selected=Object.keys(MAX_BUY_LABELS).find(p=>MAX_BUY_LABELS[p]===input);
   if(selected){
     const previous=await loadSession(userId);
     await saveSession(userId,{source:previous?.source||'bot',product:selected,phase:'contact',expiresAt:now()+TTL});
-    return reply({text:CATALOG[selected].title+' — '+price(selected)+' ₽\n\nДля оплаты и электронного чека напишите свой email или номер телефона обычным сообщением в этом чате MAX.\n\nНажмите поле сообщения, введите email или телефон и отправьте сообщение. Например: name@example.com или +79991234567.\n\nКнопка «Политика данных» открывает документ для ознакомления. Для ввода email или телефона нажимать её не нужно.\n\nКонтакт используется для оформления заказа и чека согласно политике ниже. Следующий шаг — подтверждение условий и оплата Т-Банка.',attachments:buttons([[{type:'link',text:'Политика данных',url:SITE+'/privacy'}],cancel()])});
+    return reply({text:PRODUCT_DETAILS[selected]+'\n\nДля оплаты и электронного чека напишите свой email или номер телефона обычным сообщением в этом чате MAX.\n\nНажмите поле сообщения, введите email или телефон и отправьте сообщение. Например: name@example.com или +79991234567.\n\nКнопка «Политика данных» открывает документ для ознакомления. Для ввода email или телефона нажимать её не нужно.\n\nКонтакт используется для оформления заказа и чека согласно политике ниже. Следующий шаг — подтверждение условий и оплата Т-Банка.',attachments:buttons([[{type:'link',text:'Политика данных',url:SITE+'/privacy'}],cancel()])});
   }
   if(input==='/start'||input==='/courses'||input==='/cancel'||input==='Отменить оформление'){
     const previous=await loadSession(userId);
@@ -86,4 +88,5 @@ export async function engineerMaxCheckout(update,{loadSession,saveSession,create
     return reply({text:'Не удалось подготовить оплату. Деньги не списаны. Можно повторить подтверждение условий.',attachments:confirmation(s).attachments});
   }
 }
+
 

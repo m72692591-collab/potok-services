@@ -1,3 +1,4 @@
+import { WELCOME,COURSE_MENU,PRODUCT_DETAILS } from './_engineer-product-copy.js';
 import { engineerMaxAccess } from './_engineer-max-access.js';
 import { findMaxOrders,recordMaxAccessHealth,maxAccessHealth } from './_engineer-max-order-history.js';
 import { bilingualText,LANGUAGE_NOTE } from './_engineer-language.js';
@@ -121,6 +122,9 @@ function cleanSource(raw){
 
 function keyboard(source){
   return [{type:'inline_keyboard',payload:{buttons:[
+    [{type:'message',text:'📂 Что внутри курсов'}],
+    [{type:'message',text:'📐 Программа AutoCAD'}],
+    [{type:'message',text:'📅 Программа Primavera P6'}],
     [{type:'message',text:'🎁 Бесплатный старт'}],
     [{type:'message',text:MAX_BUY_LABELS.starter}],
     [{type:'message',text:MAX_BUY_LABELS.autocad}],
@@ -129,9 +133,7 @@ function keyboard(source){
   ]}}];
 }
 
-function courseMenu(){
-  return '👷 ИНЖЕНЕР С НУЛЯ\nAutoCAD и Primavera P6 по рабочим задачам строительства.\n\n🎁 Начните бесплатно\nПопробуйте задания по чертежам и календарному графику. Кнопка ниже и команда /free показывают задание прямо здесь.\n\n⚡ Первый рабочий день инженера — 490 ₽\nКороткий практикум: попробуйте формат перед полным курсом.\n\n📐 AutoCAD — 21 день · 1 990 ₽\nДля стройки и исполнительной документации.\n\n📅 Primavera P6 — 14 дней · 2 490 ₽\nС нуля: структура проекта, задачи и календарный график.\n\n📦 AutoCAD + Primavera P6 — 3 490 ₽\nОба курса в одном комплекте.\n\nВыберите продукт ниже. Email или телефон для чека и подтверждение условий — прямо в этом чате. Затем бот даст кнопку оплаты Т-Банка. После оплаты цифровой товар выдаётся автоматически.\n\n💬 Не знаете, с чего начать? Напишите вопрос — помогу выбрать.';
-}
+function courseMenu(){return COURSE_MENU+'\n\nВыберите товар кнопкой ниже. Затем напишите email или телефон обычным сообщением в этом чате. После подтверждения оплаты бот выдаст материалы файлом.';}
 
 export function engineerMaxReply(update){
   const type=String(update?.update_type||'');
@@ -140,16 +142,25 @@ export function engineerMaxReply(update){
   if(type==='bot_started'){
     userId=Number(update?.user?.user_id);
     source=cleanSource(update?.payload||'max');
-    text=courseMenu();
+    text=WELCOME;
   }else if(type==='message_created'){
     const m=update?.message;
     userId=Number(m?.sender?.user_id);
     if(m?.sender?.is_bot===true)return null;
     const input=String(m?.body?.text||'').trim().slice(0,1200);
     if(!input)return null;
-    const cmd=input==='🎁 Бесплатный старт'?'/free':input.split(/\s+/,1)[0].toLowerCase();
-    if(cmd==='/start'||cmd==='/courses'){
+    const viewCommands={'📂 Что внутри курсов':'/demo','📐 Программа AutoCAD':'/program_autocad','📅 Программа Primavera P6':'/program_primavera'};
+    const cmd=viewCommands[input]||(input==='🎁 Бесплатный старт'?'/free':input.split(/\s+/,1)[0].toLowerCase());
+    if(cmd==='/start'){
+      text=WELCOME;
+    }else if(cmd==='/courses'){
       text=courseMenu();
+    }else if(cmd==='/demo'){
+      text=COURSE_MENU;
+    }else if(cmd==='/program_autocad'){
+      text=PRODUCT_DETAILS.autocad;
+    }else if(cmd==='/program_primavera'){
+      text=PRODUCT_DETAILS.primavera;
     }else if(cmd==='/free'){
       text='Бесплатный старт:\n\nAutoCAD: измерьте известный размер командой _DIST, проверьте слой объекта и поставьте контрольный размер _DIM.\n\nPrimavera P6: создайте Project, WBS из 3 блоков и 3 Activities, задайте длительности и свяжите их FS.\n\nЕсли получилось — переходите к практикуму 490 ₽ или полному курсу.';
     }else if(cmd==='/support'){
@@ -215,3 +226,4 @@ export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engi
 
 
 async function maxAccessReply(update){return engineerMaxAccess(update,{loadSession:loadMaxSession,findOrders:findMaxOrders,deliver:deliverMaxOrder,saveSession:saveMaxSession,record:recordMaxAccessHealth});}
+
