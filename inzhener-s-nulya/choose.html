@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Инженер с нуля — где удобнее продолжить</title>
+<meta name="description" content="AutoCAD и Primavera P6 для строительства. Выберите MAX, Telegram или сайт.">
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f5f7fb}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}
+main{width:min(680px,100%);background:#fff;border:1px solid #e5e7eb;border-radius:24px;padding:28px;box-shadow:0 16px 50px rgba(15,23,42,.08)}
+h1{margin:0 0 10px;font-size:clamp(28px,6vw,42px)}p{line-height:1.5;color:#4b5563}
+.badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef2ff;font-weight:700;margin-bottom:14px}
+.options{display:grid;gap:12px;margin:24px 0}
+a.btn{display:block;text-decoration:none;color:#111827;border:1px solid #d1d5db;border-radius:16px;padding:18px;font-weight:800;font-size:18px;background:#fff}
+a.btn:hover{background:#f9fafb}.sub{display:block;font-weight:500;font-size:14px;color:#6b7280;margin-top:4px}
+.small{font-size:13px;color:#6b7280;margin-top:18px}
+</style>
+</head>
+<body>
+<main>
+<div class="badge">Инженер с нуля</div>
+<h1>Где вам удобнее продолжить?</h1>
+<p>AutoCAD и Primavera P6 для строительства. Бесплатное первое задание и практикум «Первый рабочий день инженера» за 490 ₽.</p>
+<div class="options">
+<a class="btn" id="maxLink" href="#" hidden>📲 MAX<span class="sub">Открыть помощника в MAX</span></a>
+<a class="btn" id="tgLink" href="#" hidden>✈️ Telegram<span class="sub">Открыть помощника в Telegram</span></a>
+<a class="btn" id="siteLink" href="/?src=vk_choice#courses">🌐 Сайт<span class="sub">Посмотреть программы, цены и купить</span></a>
+</div>
+<p class="small">Выберите любой удобный способ. Товары, цены и выдача материалов одинаковые.</p>
+</main>
+<script>
+const event=(source)=>fetch('/api/engineer-support?channel=event',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event:'page_view',path:location.pathname,source})}).catch(()=>{});
+const click=(source)=>fetch('/api/engineer-support?channel=event',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event:source==='site'?'checkout_open':source==='telegram'?'telegram_click':'max_click',path:location.pathname,source:'vk_choice_'+source})}).catch(()=>{});
+event('vk_choice');
+fetch('/api/public-info').then(r=>r.json()).then(info=>{
+  if(info.maxBotUrl){const a=document.getElementById('maxLink');a.href=info.maxBotUrl+(info.maxBotUrl.includes('?')?'&':'?')+'start=eng_vk_choice';a.hidden=false;a.onclick=()=>click('max')}
+  if(info.telegramBotUrl){const a=document.getElementById('tgLink');a.href='https://t.me/AnimaTactusGrowthBot?start=eng_vk_choice';a.hidden=false;a.onclick=()=>click('telegram')}
+}).catch(()=>{});
+document.getElementById('siteLink').onclick=()=>click('site');
+</script>
+</body>
+</html>
