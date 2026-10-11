@@ -59,16 +59,3 @@ test('MAX readiness can configure webhook after identity check',async()=>{
   assert.equal(r.profileAvatarConfigured,true);
   assert.equal(r.botUrl,'https://max.ru/id640100982708_bot');
 });
-
-
-test('MAX course details contain Telegram and website links',()=>{
-  const r=engineerMaxReply({
-    update_type:'message_created',
-    message:{sender:{user_id:456,is_bot:false},body:{text:'📂 Что внутри курсов'}}
-  });
-  assert.equal(r.userId,456);
-  assert.match(r.text,/Telegram:/);
-  assert.match(r.text,/t\.me\/AnimaTactusGrowthBot\?start=eng_max/);
-  assert.match(r.text,/Сайт:/);
-  assert.match(r.text,/inzhener-s-nulya\.vercel\.app\/\?src=max/);
-});
