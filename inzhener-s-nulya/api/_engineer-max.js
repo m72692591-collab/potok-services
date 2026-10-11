@@ -150,7 +150,9 @@ export function engineerMaxReply(update){
     const input=String(m?.body?.text||'').trim().slice(0,1200);
     if(!input)return null;
     const viewCommands={'📂 Что внутри курсов':'/demo','📐 Программа AutoCAD':'/program_autocad','📅 Программа Primavera P6':'/program_primavera'};
-    const cmd=viewCommands[input]||(input==='🎁 Бесплатный старт'?'/free':input.split(/\s+/,1)[0].toLowerCase());
+    const normalized=input.toLowerCase().replace(/ё/g,'е').trim();
+    const startAliases=new Set(['/start','start','начать','старт','привет','здравствуйте','добрый день','добрый вечер']);
+    const cmd=viewCommands[input]||(input==='🎁 Бесплатный старт'?'/free':(startAliases.has(normalized)?'/start':input.split(/\s+/,1)[0].toLowerCase()));
     if(cmd==='/start'){
       text=WELCOME;
     }else if(cmd==='/courses'){
