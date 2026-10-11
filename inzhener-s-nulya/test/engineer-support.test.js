@@ -17,7 +17,7 @@ test('answers Primavera WBS question',()=>{
 test('does not invent unsupported answer',()=>{
   const r=engineerSupportAnswer('Как рассчитать сварной шов по нормам?');
   assert.equal(r.category,'fallback');
-  assert.match(r.answer,/не придумывать/i);
+  assert.match(r.answer,/Не совсем понял вопрос/i);
 });
 
 test('answers starter price',()=>{
