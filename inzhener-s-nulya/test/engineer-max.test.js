@@ -59,3 +59,16 @@ test('MAX readiness can configure webhook after identity check',async()=>{
   assert.equal(r.profileAvatarConfigured,true);
   assert.equal(r.botUrl,'https://max.ru/id640100982708_bot');
 });
+
+
+test('MAX start aliases show welcome instead of fallback',()=>{
+  for(const input of ['Начать','Старт','Привет','Здравствуйте']){
+    const r=engineerMaxReply({
+      update_type:'message_created',
+      message:{sender:{user_id:777,is_bot:false},body:{text:input}}
+    });
+    assert.equal(r.userId,777);
+    assert.match(r.text,/Привет! 👋 Это «Инженер с нуля»/);
+    assert.doesNotMatch(r.text,/Не совсем понял вопрос/);
+  }
+});
