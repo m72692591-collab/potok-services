@@ -15,9 +15,8 @@ test('MAX bot_started produces welcome and paid buttons',()=>{
   assert.match(raw,/max_eng_vk_max_launch/);
   assert.doesNotMatch(raw,/t\.me\/AnimaTactusGrowthBot\?start=eng_max/);
   assert.doesNotMatch(raw,/inzhener-s-nulya\.vercel\.app\/\?src=max/);
-  assert.match(r.text,/Подробнее о продукте:/);
-  assert.match(r.text,/Telegram:/);
-  assert.match(r.text,/Сайт:/);
+  assert.doesNotMatch(r.text,/Telegram:/);
+  assert.doesNotMatch(r.text,/Сайт:/);
 });
 
 test('MAX ordinary question reuses engineering support KB',()=>{
@@ -59,4 +58,17 @@ test('MAX readiness can configure webhook after identity check',async()=>{
   assert.equal(r.profileDescriptionConfigured,true);
   assert.equal(r.profileAvatarConfigured,true);
   assert.equal(r.botUrl,'https://max.ru/id640100982708_bot');
+});
+
+
+test('MAX course details contain Telegram and website links',()=>{
+  const r=engineerMaxReply({
+    update_type:'message_created',
+    message:{sender:{user_id:456,is_bot:false},body:{text:'📂 Что внутри курсов'}}
+  });
+  assert.equal(r.userId,456);
+  assert.match(r.text,/Telegram:/);
+  assert.match(r.text,/t\.me\/AnimaTactusGrowthBot\?start=eng_max/);
+  assert.match(r.text,/Сайт:/);
+  assert.match(r.text,/inzhener-s-nulya\.vercel\.app\/\?src=max/);
 });
