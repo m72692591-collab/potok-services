@@ -13,6 +13,10 @@ test('MAX bot_started produces welcome and paid buttons',()=>{
   const raw=JSON.stringify(r.attachments);
   assert.match(raw,/buy=starter/);
   assert.match(raw,/max_eng_vk_max_launch/);
+  assert.match(raw,/t\.me\/AnimaTactusGrowthBot\?start=eng_max/);
+  assert.match(raw,/inzhener-s-nulya\.vercel\.app\/\?src=max/);
+  assert.match(r.text,/Telegram:/);
+  assert.match(r.text,/Сайт:/);
 });
 
 test('MAX ordinary question reuses engineering support KB',()=>{
