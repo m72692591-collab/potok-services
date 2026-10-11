@@ -129,11 +129,7 @@ function keyboard(source){
     [{type:'message',text:MAX_BUY_LABELS.starter}],
     [{type:'message',text:MAX_BUY_LABELS.autocad}],
     [{type:'message',text:MAX_BUY_LABELS.primavera}],
-    [{type:'message',text:MAX_BUY_LABELS.bundle}],
-    [
-      {type:'link',text:'✈️ Telegram',url:'https://t.me/AnimaTactusGrowthBot?start=eng_max'},
-      {type:'link',text:'🌐 Сайт',url:SITE+'/?src=max'}
-    ]
+    [{type:'message',text:MAX_BUY_LABELS.bundle}]
   ]}}];
 }
 
