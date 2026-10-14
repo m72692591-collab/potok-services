@@ -38,7 +38,7 @@ async function check(){
       }
       box.innerHTML=html;
       const mobileBtn=document.getElementById('mobileDl');
-      if(mobileBtn)mobileBtn.onclick=()=>{location.href='/api/mobile-download?'+new URLSearchParams({orderId,product,token})};
+      if(mobileBtn)mobileBtn.onclick=()=>{location.href='/api/download?'+new URLSearchParams({orderId,product,token,mobile:'1'})};
       const btn=document.getElementById('dl');
       if(btn)btn.onclick=download;
       addTestRefundButton();
