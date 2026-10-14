@@ -11,6 +11,7 @@ import createPayment from './create-payment.js';
 import { npdSessionStatus } from './_npd.js';
 import { tbankEnv } from './_tbank.js';
 import { engineerMaxCheckout, MAX_BUY_LABELS } from './_engineer-max-checkout.js';
+import { engineerNokReply } from './_engineer-nok.js';
 import { loadMaxSession, saveMaxSession } from './_engineer-max-session.js';
 
 const API='https://platform-api2.max.ru';
@@ -68,6 +69,7 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=en
       {name:'start',description:'Начать'},
       {name:'free',description:'Бесплатный старт'},
       {name:'courses',description:'Курсы и цены'},
+      {name:'nok',description:'Подготовка к НОК НОСТРОЙ и НОПРИЗ'},
       {name:'support',description:'Задать вопрос'},
       {name:'access',description:'Проверить оплату и получить файлы'}
     ];
@@ -123,6 +125,7 @@ function cleanSource(raw){
 function keyboard(source){
   return [{type:'inline_keyboard',payload:{buttons:[
     [{type:'message',text:'📂 Что внутри курсов'}],
+    [{type:'message',text:'🧠 Тренажёр НОК'}],
     [{type:'message',text:'📐 Программа AutoCAD'}],
     [{type:'message',text:'📅 Программа Primavera P6'}],
     [{type:'message',text:'🎁 Бесплатный старт'}],
@@ -189,7 +192,7 @@ export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engi
   try{update=await readJson(req)}catch{return json(res,400,{error:'invalid_update'})}
   let reply;
   try{
-    reply=await maxAccessReply(update)||await engineerMaxCheckout(update,{
+    reply=await maxAccessReply(update)||engineerNokReply(update,env)||await engineerMaxCheckout(update,{
       loadSession:loadMaxSession,saveSession:saveMaxSession,
       canPay:async()=>String(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase()==='tbank'&&tbankEnv()==='production'&&Boolean((await npdSessionStatus()).connected),
       createPayment:async(body,userId)=>{
