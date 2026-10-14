@@ -5,6 +5,7 @@ import { blobAuth } from './_blob-auth.js';
 import { CATALOG,verifyOrderToken } from './_shared.js';
 import { engineerMaxFetch,engineerMaxUpload } from './_engineer-max-http.js';
 import { starterProductHtml } from './_starter-product.js';
+import {windowsAndMobileZip,mobileSupported} from './_mobile-course-zip.js';
 import { getTbankPayment,saveTbankPayment } from './_tbank-payments.js';
 import { safeTbankState,tbankCall } from './_tbank.js';
 import { ensureNpdReceiptForOrder } from './_npd.js';
@@ -30,7 +31,7 @@ export function starterZip(){
 export async function prepareMaxAsset(code){
   const p=CATALOG[code];if(!p||p.controlOnly)throw new Error('invalid_product');
   await identity();
-  const path='_max_assets/chat-files-enru-v1/'+code+'.json';
+  const path='_max_assets/chat-files-'+(mobileSupported(code)?'unified-v1':'enru-v1')+'/'+code+'.json';
   const cached=await get(path,{access:'private',useCache:false,...blobAuth()});
   if(cached?.statusCode===200){const asset=JSON.parse(await new Response(cached.stream).text());if(asset.token&&asset.bot===BOT)return asset;}
   let bytes;
@@ -42,10 +43,10 @@ export async function prepareMaxAsset(code){
     if(matching[0].size>128*1024*1024)throw new Error('max_asset_too_large');
     const file=await get(matching[0].pathname,{access:'private',useCache:false,...blobAuth()});
     if(file?.statusCode!==200)throw new Error('max_asset_unreadable');
-    bytes=Buffer.from(await new Response(file.stream).arrayBuffer());
+    bytes=windowsAndMobileZip(code,Buffer.from(await new Response(file.stream).arrayBuffer()));
   }
   const upload=await api('/uploads?type=file',{});
-  const boundary='max-'+randomUUID(),filename=code==='starter'?'first-engineer-workday.zip':code+'-course.zip';
+  const boundary='max-'+randomUUID(),filename=code==='starter'?'first-engineer-workday.zip':(mobileSupported(code)?code+'-windows-and-phone.zip':code+'-course.zip');
   const body=Buffer.concat([Buffer.from('--'+boundary+'\r\nContent-Disposition: form-data; name="data"; filename="'+filename+'"\r\nContent-Type: application/zip\r\n\r\n'),bytes,Buffer.from('\r\n--'+boundary+'--\r\n')]);
   const response=await engineerMaxUpload(upload.url,body,'multipart/form-data; boundary='+boundary);
   const result=await response.json().catch(()=>({}));
@@ -71,7 +72,7 @@ export async function deliverMaxOrder(orderId,{userId,accessToken,productCode,fo
   let asset;try{asset=await d.asset(order.product);}catch(e){e.deliveryStage='asset';throw e;}
   let message;
   for(let i=0;i<4;i++){
-    try{message=await d.send('/messages?user_id='+order.maxUserId,{text:'Оплата подтверждена. '+product.title+'\n\nМатериалы — в ZIP-файле ниже. Скачайте архив и распакуйте его. '+(order.product==='starter'?'Откройте first-engineer-workday.html из архива: практикум работает на компьютере без подключения к сайту.':'Откройте инструкцию внутри архива на компьютере.')+'\n\nСохраните файл. Для повторной выдачи напишите /access. Вопросы можно написать обычным сообщением в этом чате.',attachments:[{type:'file',payload:{token:asset.token}}]});break;}
+    try{message=await d.send('/messages?user_id='+order.maxUserId,{text:'Оплата подтверждена. '+product.title+'\n\nМатериалы — в ZIP-файле ниже. Скачайте архив и распакуйте его. '+(order.product==='starter'?'Откройте first-engineer-workday.html из архива.':'В одном архиве: Windows-курс (ZIP) и мобильный курс (HTML). На ПК распакуйте внутренний ZIP; на телефоне откройте HTML в браузере. Доступ после сохранения без интернета.')+'\n\nСохраните файл. Для повторной выдачи напишите /access. Вопросы можно написать обычным сообщением в этом чате.',attachments:[{type:'file',payload:{token:asset.token}}]});break;}
     catch(e){e.deliveryStage='send';if(!String(e.message).includes('attachment.not.ready')||i===3)throw e;await new Promise(r=>setTimeout(r,1000*2**i));}
   }
   await d.save(orderId,{maxDeliveredAt:Date.now(),maxDeliveryMessageId:message?.message?.body?.mid||message?.body?.mid||'',maxDeliveryStatus:'delivered'});
