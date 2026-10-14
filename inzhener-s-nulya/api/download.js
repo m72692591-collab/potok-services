@@ -5,6 +5,7 @@ import{getTbankPayment,saveTbankPayment}from'./_tbank-payments.js';
 import{reserveDownload}from'./_downloads.js';
 import{blobAuth}from'./_blob-auth.js';
 import{starterProductHtml}from'./_starter-product.js';
+import{mobileCourseZip,mobileSupported}from'./_mobile-course-zip.js';
 
 function norm(s){
   return String(s||'').normalize('NFKC').toLowerCase().replace(/[^a-zа-яё0-9]/giu,'');
@@ -60,6 +61,20 @@ export default async function handler(req,res){
       st=safeOrderState(await fetchYandexOrder(id),p);
     }
     if(st.state!=='paid')return json(res,409,st);
+
+    // Phone course is included in the SAME paid product. Do not use an extra Function.
+    // This branch remains behind the order signature and authoritative bank check.
+    if(req.query.mobile==='1'){
+      if(!mobileSupported(pc))return json(res,404,{error:'mobile_not_available'});
+      const zip=mobileCourseZip(pc);
+      res.statusCode=200;
+      res.setHeader('Content-Type','application/zip');
+      res.setHeader('Content-Disposition','attachment; filename="'+pc+'-mobile-course.zip"');
+      res.setHeader('Cache-Control','private, no-store');
+      res.setHeader('X-Content-Type-Options','nosniff');
+      res.end(zip);
+      return;
+    }
 
     if(p.inlineDelivery&&pc==='starter'){
       stage='download_limit';
