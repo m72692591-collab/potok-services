@@ -33,7 +33,12 @@ async function check(){
         html+='<button class="btn" id="dl">'+(dl.used>0?'Скачать ещё раз':(product==='starter'?'Скачать практикум':'Скачать курс'))+'</button><span id="refundSlot"></span>';
       }
 
+      if(['autocad','primavera','bundle'].includes(product)){
+        html+='<hr style="border:0;border-top:1px solid #dce2e8;margin:22px 0"><h3>Версия для телефона входит в стоимость</h3><p class="muted">Отдельные мобильные уроки с интерактивными заданиями. Откройте HTML-файл на телефоне — курс работает офлайн после сохранения. Функции учебного CAD-полигона и CPM-редактора не заменяют программы AutoCAD и Primavera P6.</p><button class="btn" id="mobileDl" type="button">Скачать мобильную версию</button>';
+      }
       box.innerHTML=html;
+      const mobileBtn=document.getElementById('mobileDl');
+      if(mobileBtn)mobileBtn.onclick=()=>{location.href='/api/mobile-download?'+new URLSearchParams({orderId,product,token})};
       const btn=document.getElementById('dl');
       if(btn)btn.onclick=download;
       addTestRefundButton();
