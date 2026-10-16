@@ -70,7 +70,7 @@ export async function ensureEngineerTelegramWebhook(req,{env=process.env,fetchIm
       if(cmdRes.ok && cmdData?.ok && Array.isArray(cmdData.result)){
         const commands = cmdData.result;
         const filtered = commands.filter(item=>!['nok','nostroy','nopriz','nopriz_survey'].includes(
-          String(item?.command||'').replace(/^\\//,'').toLowerCase()
+          String(item?.command||'').replaceAll('/','').toLowerCase()
         ));
         if(filtered.length!==commands.length){
           const patchRes = await fetchImpl(`${api}/setMyCommands`, {
