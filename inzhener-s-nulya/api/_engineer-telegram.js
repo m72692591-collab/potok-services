@@ -62,6 +62,29 @@ export async function ensureEngineerTelegramWebhook(req,{env=process.env,fetchIm
     result.identityVerified = Boolean(meRes.ok && me?.ok && me?.result?.username === GROWTH_BOT);
     if (!result.identityVerified) return result;
 
+    // Remove NOK-related commands previously registered with Telegram,
+    // preserving every other bot command and never blocking the webhook if unavailable.
+    try {
+      const cmdRes = await fetchImpl(`${api}/getMyCommands`, {method:'POST',signal:AbortSignal.timeout(8000)});
+      const cmdData = await cmdRes.json().catch(()=>({}));
+      if(cmdRes.ok && cmdData?.ok && Array.isArray(cmdData.result)){
+        const commands = cmdData.result;
+        const filtered = commands.filter(item=>!['nok','nostroy','nopriz','nopriz_survey'].includes(
+          String(item?.command||'').replace(/^\\//,'').toLowerCase()
+        ));
+        if(filtered.length!==commands.length){
+          const patchRes = await fetchImpl(`${api}/setMyCommands`, {
+            method:'POST',
+            headers:{'content-type':'application/json'},
+            body:JSON.stringify({commands:filtered}),
+            signal:AbortSignal.timeout(8000)
+          });
+          const patch=await patchRes.json().catch(()=>({}));
+          result.nokCommandsRemoved=Boolean(patchRes.ok&&patch?.ok);
+        }
+      }
+    } catch { /* noncritical: the reply keyboard is already clean */ }
+
     let whRes = await fetchImpl(`${api}/getWebhookInfo`,{method:'POST',signal:AbortSignal.timeout(8000)});
     let wh = await whRes.json().catch(()=>({}));
     let url = String(wh?.result?.url||'');
