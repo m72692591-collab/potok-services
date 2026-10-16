@@ -125,7 +125,6 @@ export function engineerTelegramReply(update) {
       [{ text: '🎁 Бесплатный старт' }, { text: '⚡ Практикум 490 ₽' }],
       [{ text: '📐 AutoCAD 1 990 ₽' }, { text: '📅 Primavera P6 2 490 ₽' }],
       [{ text: '📦 Комплект 3 490 ₽' }],
-      [{ text:'🧠 НОК НОСТРОЙ / НОПРИЗ' }],
       [{ text: '💬 Задать вопрос' }]
     ],
     resize_keyboard: true,
@@ -145,7 +144,6 @@ export function engineerTelegramReply(update) {
     '📐 AutoCAD 1 990 ₽': '/autocad_paid',
     '📅 Primavera P6 2 490 ₽': '/primavera_paid',
     '📦 Комплект 3 490 ₽': '/bundle',
-    '🧠 НОК НОСТРОЙ / НОПРИЗ':'/nok',
     '💬 Задать вопрос': '/support'
   };
   const command = aliases[input] || aliases[commandRaw] || commandRaw;
@@ -175,7 +173,6 @@ export function engineerTelegramReply(update) {
 
 Купить: ${buyUrl('bundle')}`,
     '/courses': COURSE_MENU,
-    '/nok':'🧠 НОК НОСТРОЙ / НОПРИЗ — подготовка уже сегодня\n\nБесплатные внешние материалы:\n\n🏗 НОСТРОЙ · 486 вопросов и практические задания:\nhttps://giprussia.ru/specialist-po-organizacii-stroitelstva-nok-test\n\n📐 НОПРИЗ · 450 вопросов:\nhttps://giprussia.ru/glavniy-inzhener-proekta-nok-test\n\n📄 Оценочные средства ГИП 2026, включая практику:\nhttps://srobrp.ru/wp-content/uploads/2026/07/GIP-2026.pdf\n\nЭто сторонние материалы. Наш собственный платный тренажёр будет открыт после проверки нормативов; оплату НОК пока не принимаем. Текущие курсы AutoCAD и Primavera содержат Windows + мобильную версию без доплаты.',
     '/support': `Просто напишите вопрос сюда обычным сообщением. Я отвечу по AutoCAD, Primavera P6, выбору курса, оплате и доступу. Владелец проекта вручную подключаться не должен.`,
     '/access': `После оплаты банк подтвердит платёж, чек НПД сформируется автоматически, а на странице заказа появится защищённая выдача материалов. Если деньги списались, не оплачивайте повторно — напишите сюда, что произошло.`
   };
