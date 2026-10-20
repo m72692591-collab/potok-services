@@ -45,3 +45,8 @@ test('excessive attachment size is rejected before download',async()=>{
   assert.match(resp.text,/256 КБ/);
   assert.equal(called,false);
 });
+test('marker marketing link is routed without hijacking course links',async()=>{
+  const started=payload=>({update_type:'bot_started',user:{user_id:1002},payload});
+  assert.match((await engineerMarkerReply(started('marker_launch'))).text,/Проверка таблиц/);
+  assert.equal(await engineerMarkerReply(started('buy_autocad')),null);
+});
