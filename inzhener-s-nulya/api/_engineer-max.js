@@ -1,5 +1,4 @@
 import { WELCOME,COURSE_MENU,PRODUCT_DETAILS } from './_engineer-product-copy.js';
-import { engineerMaxMarkerReply } from './_engineer-max-marker.js';
 import { engineerMaxAccess } from './_engineer-max-access.js';
 import { findMaxOrders,recordMaxAccessHealth,maxAccessHealth } from './_engineer-max-order-history.js';
 import { bilingualText,LANGUAGE_NOTE } from './_engineer-language.js';
@@ -72,7 +71,6 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=en
       {name:'courses',description:'Курсы и цены'},
       {name:'support',description:'Задать вопрос'},
       {name:'access',description:'Проверить оплату и получить файлы'},
-      {name:'marker',description:'МаркерФайл — проверка CSV и GTIN'},
       {name:'marker',description:'Бесплатная проверка GTIN и CSV'}
     ];
     const currentCommands=Array.isArray(me?.commands)?me.commands.map(x=>({
@@ -130,7 +128,6 @@ function keyboard(source){
     [{type:'message',text:'📐 Программа AutoCAD'}],
     [{type:'message',text:'📅 Программа Primavera P6'}],
     [{type:'message',text:'🎁 Бесплатный старт'}],
-    [{type:'message',text:'📋 Проверить CSV'}],
     [{type:'message',text:'🧾 Проверить таблицу'}],
     [{type:'message',text:MAX_BUY_LABELS.starter}],
     [{type:'message',text:MAX_BUY_LABELS.autocad}],
@@ -205,7 +202,7 @@ export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engi
         if(status!==200||!data?.paymentUrl)throw new Error('max_payment_init_failed');
         return data;
       }
-    })||await engineerMaxMarkerReply(update)||engineerMaxReply(update);
+    })||engineerMaxReply(update);
   }catch{
     console.error('max_checkout_unavailable');
     return json(res,503,{error:'max_checkout_unavailable'});
