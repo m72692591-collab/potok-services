@@ -4,6 +4,7 @@ import { findMaxOrders,recordMaxAccessHealth,maxAccessHealth } from './_engineer
 import { bilingualText,LANGUAGE_NOTE } from './_engineer-language.js';
 import { deliverMaxOrder,prepareMaxAsset } from './_engineer-max-delivery.js';
 import { engineerMaxFetch } from './_engineer-max-http.js';
+import { engineerMarkerReply } from './_engineer-marker.js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { engineerSupportAnswer } from './_engineer-support.js';
 import { CATALOG, json, readJson } from './_shared.js';
@@ -69,7 +70,8 @@ export async function ensureEngineerMaxWebhook(req,{env=process.env,fetchImpl=en
       {name:'free',description:'Бесплатный старт'},
       {name:'courses',description:'Курсы и цены'},
       {name:'support',description:'Задать вопрос'},
-      {name:'access',description:'Проверить оплату и получить файлы'}
+      {name:'access',description:'Проверить оплату и получить файлы'},
+      {name:'marker',description:'Бесплатная проверка GTIN и CSV'}
     ];
     const currentCommands=Array.isArray(me?.commands)?me.commands.map(x=>({
       name:String(x?.name||''),description:String(x?.description||'')
@@ -126,6 +128,7 @@ function keyboard(source){
     [{type:'message',text:'📐 Программа AutoCAD'}],
     [{type:'message',text:'📅 Программа Primavera P6'}],
     [{type:'message',text:'🎁 Бесплатный старт'}],
+    [{type:'message',text:'🧾 Проверить таблицу'}],
     [{type:'message',text:MAX_BUY_LABELS.starter}],
     [{type:'message',text:MAX_BUY_LABELS.autocad}],
     [{type:'message',text:MAX_BUY_LABELS.primavera}],
@@ -199,7 +202,7 @@ export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engi
         if(status!==200||!data?.paymentUrl)throw new Error('max_payment_init_failed');
         return data;
       }
-    })||engineerMaxReply(update);
+    })||await engineerMarkerReply(update)||engineerMaxReply(update);
   }catch{
     console.error('max_checkout_unavailable');
     return json(res,503,{error:'max_checkout_unavailable'});
