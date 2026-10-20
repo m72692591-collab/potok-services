@@ -63,6 +63,10 @@ function markerFormat(result){
 const INTRO='🧾 Проверка таблиц товаров — бесплатный пилот.\n\nОтправьте CSV до 256 КБ прямо в этот чат. Желателен столбец GTIN или EAN. Кодировки UTF-8 и Windows-1251, разделители ; или ,.\n\nМожно без файла: /gtin 4601234567893 4601234567894\n\nExcel XLSX временно сохраните как CSV. Не отправляйте личные данные и коммерческие тайны. Техническая проверка не заменяет правила «Честного знака».';
 function reply(userId,text){return{userId,text,attachments:[]};}
 export async function engineerMarkerReply(update,{download=engineerMaxDownload}={}){
+  if(update?.update_type==='bot_started'&&/^marker(?:_launch|_vk|_direct)?$/i.test(String(update?.payload||''))){
+    const userId=Number(update?.user?.user_id);
+    return Number.isSafeInteger(userId)&&userId>0?reply(userId,INTRO):null;
+  }
   if(update?.update_type!=='message_created'||update.message?.recipient?.chat_type!=='dialog'||update.message?.sender?.is_bot===true)return null;
   const userId=Number(update.message.sender?.user_id);
   if(!Number.isSafeInteger(userId)||userId<=0)return null;
