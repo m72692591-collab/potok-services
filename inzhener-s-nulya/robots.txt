@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /control.html
+Disallow: /order.html
+Sitemap: https://inzhener-s-nulya.vercel.app/sitemap.xml
