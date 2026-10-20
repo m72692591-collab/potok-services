@@ -66,3 +66,44 @@ export async function engineerMaxDownload(rawUrl,maxBytes=262144){
     req.end();
   });
 }
+
+/**
+ * Скачивание вложения от MAX. Без передачи токена на CDN и без записи файла.
+ * Проверяем адрес и каждый redirect, ограничиваем объём и тайм-аут.
+ */
+export async function engineerMaxDownload(input, limit=1048576) {
+  const permitted = url => {
+    if(url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return false;
+    return ['max.ru','oneme.ru','okcdn.ru','mycdn.me'].some(h=>url.hostname===h||url.hostname.endsWith('.'+h));
+  };
+  async function get(raw, redirects) {
+    let url;
+    try { url=new URL(raw); } catch { throw new Error('markerfile_invalid_download_url'); }
+    if(!permitted(url)) throw new Error('markerfile_invalid_download_url');
+    return new Promise((resolve,reject)=>{
+      let finished=false, req;
+      const fail=e=>{if(!finished){finished=true;reject(e)}};
+      req=https.get(url,{agent,timeout:12000,headers:{'accept':'text/csv,application/octet-stream,*/*'}},response=>{
+        if([301,302,303,307,308].includes(response.statusCode)){
+          const loc=response.headers.location;
+          response.resume();
+          if(redirects>=2 || !loc)return fail(new Error('markerfile_redirect_blocked'));
+          let next;
+          try {next=new URL(loc,url)}catch{return fail(new Error('markerfile_redirect_blocked'))}
+          if(!permitted(next))return fail(new Error('markerfile_redirect_blocked'));
+          finished=true;get(next.toString(),redirects+1).then(resolve,reject);return;
+        }
+        if(response.statusCode!==200){response.resume();return fail(new Error('MAX не дал скачать файл (HTTP '+response.statusCode+')'))}
+        const contentLength=Number(response.headers['content-length']||0);
+        if(contentLength>limit){response.destroy();return fail(new Error('Файл превышает ограничение 1 МБ'))}
+        let total=0;const chunks=[];
+        response.on('data',chunk=>{total+=chunk.length;if(total>limit){response.destroy();fail(new Error('Файл превышает ограничение 1 МБ'))}else chunks.push(chunk)});
+        response.on('error',fail);
+        response.on('end',()=>{if(!finished){finished=true;resolve(Buffer.concat(chunks))}});
+      });
+      req.on('error',fail);
+      req.on('timeout',()=>req.destroy(new Error('markerfile_download_timeout')));
+    });
+  }
+  return get(input,0);
+}
