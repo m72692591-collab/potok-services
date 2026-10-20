@@ -138,6 +138,10 @@ function keyboard(source){
 
 function courseMenu(){return COURSE_MENU+'\n\nВыберите товар кнопкой ниже. Затем напишите email или телефон обычным сообщением в этом чате. После подтверждения оплаты бот выдаст материалы файлом.';}
 
+const FREE_AUTOCAD_TASK = '🎁 Бесплатная практическая задача AutoCAD\n\nЦель — проверить геометрию будущей исполнительной схемы.\n\n1. Откройте AutoCAD на Windows, укажите единицы измерения — миллиметры.\n2. Постройте отрезок от (0,0) до (3000,4000).\n3. Командой _DIST проверьте расстояние: должно получиться 5000 мм.\n4. Проверьте координаты концов командой _ID и поставьте выровненный размер командой _DIMALIGNED.\n\nЕсли размер получился другим — сначала проверьте единицы и точки привязки. Если вы пока с телефона, запомните логику 3–4–5 и изучите описание мобильных упражнений.\n\nПолный курс AutoCAD: 21 день, Windows + мобильные уроки, 1 990 ₽. Нажмите «📐 Программа AutoCAD» или кнопку покупки ниже. Профессиональная программа в стоимость не входит.';
+const FREE_PRIMAVERA_TASK = '🎁 Бесплатная практическая задача Primavera P6\n\nЦель — составить простой график из трёх последовательно выполняемых работ.\n\n1. Создайте Project и WBS «РВС-5000».\n2. Добавьте операции: «Фундамент» — 3 рабочих дня, «Монтаж» — 4 дня, «Проверка» — 1 день.\n3. Свяжите все три операции Finish-to-Start (FS), без задержек и перекрытий.\n4. При непрерывном рабочем календаре без выходных критический путь равен 8 дням. Для календаря с выходными итоговую дату нужно пересчитать.\n\nПолный курс Primavera P6: 14 дней, Windows + мобильные уроки, 2 490 ₽. Нажмите «📅 Программа Primavera P6» или кнопку покупки ниже. Профессиональная программа в стоимость не входит.';
+
+
 export function engineerMaxReply(update){
   const type=String(update?.update_type||'');
   let userId=null,text='',source='max';
@@ -145,7 +149,8 @@ export function engineerMaxReply(update){
   if(type==='bot_started'){
     userId=Number(update?.user?.user_id);
     source=cleanSource(update?.payload||'max');
-    text=WELCOME;
+    text=source.startsWith('free_autocad_')?FREE_AUTOCAD_TASK:
+      source.startsWith('free_primavera_')?FREE_PRIMAVERA_TASK:WELCOME;
   }else if(type==='message_created'){
     const m=update?.message;
     userId=Number(m?.sender?.user_id);
@@ -166,6 +171,10 @@ export function engineerMaxReply(update){
       text=PRODUCT_DETAILS.autocad;
     }else if(cmd==='/program_primavera'){
       text=PRODUCT_DETAILS.primavera;
+    }else if(cmd==='/try_autocad'){
+      text=FREE_AUTOCAD_TASK;
+    }else if(cmd==='/try_primavera'){
+      text=FREE_PRIMAVERA_TASK;
     }else if(cmd==='/free'){
       text='Бесплатный старт:\n\nAutoCAD: измерьте известный размер командой _DIST, проверьте слой объекта и поставьте контрольный размер _DIM.\n\nPrimavera P6: создайте Project, WBS из 3 блоков и 3 Activities, задайте длительности и свяжите их FS.\n\nЕсли получилось — переходите к практикуму 490 ₽ или полному курсу.';
     }else if(cmd==='/support'){
