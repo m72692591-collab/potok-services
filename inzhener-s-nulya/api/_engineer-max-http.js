@@ -36,3 +36,33 @@ async function requestMax(input,options={},upload=false){
 
 export function engineerMaxFetch(input,options={}){return requestMax(input,options);}
 export function engineerMaxUpload(input,body,contentType){return requestMax(input,{method:'POST',body,headers:{'content-type':contentType,'content-length':body.length}},true);}
+
+
+// Bounded, private download of a MAX file attachment; never follow redirects.
+export async function engineerMaxDownload(rawUrl,maxBytes=262144){
+  if(typeof rawUrl!=='string'||rawUrl.length>4096)throw Error('invalid_file_url');
+  const url=new URL(rawUrl);
+  const host=url.hostname.toLowerCase();
+  if(url.protocol!=='https:'||url.username||url.password||(url.port&&url.port!=='443')||
+    !['oneme.ru','okcdn.ru','max.ru','mycdn.me'].some(h=>host===h||host.endsWith('.'+h)))
+    throw Error('download_origin_forbidden');
+  if(!Number.isInteger(maxBytes)||maxBytes<1||maxBytes>262144)throw Error('invalid_size');
+  return new Promise((resolve,reject)=>{
+    const req=https.request(url,{method:'GET',agent,timeout:10000,headers:{'Accept':'text/csv,application/octet-stream'}},res=>{
+      if(res.statusCode!==200){res.resume();reject(Error('download_status'));return;}
+      const length=Number(res.headers['content-length']||0);
+      if(length>maxBytes){res.destroy();reject(Error('download_too_large'));return;}
+      const chunks=[];let total=0;
+      res.on('data',chunk=>{
+        total+=chunk.length;
+        if(total>maxBytes){res.destroy();reject(Error('download_too_large'));return;}
+        chunks.push(chunk);
+      });
+      res.on('end',()=>resolve(Buffer.concat(chunks,total)));
+      res.on('error',reject);
+    });
+    req.on('timeout',()=>req.destroy(Error('download_timeout')));
+    req.on('error',reject);
+    req.end();
+  });
+}
