@@ -192,7 +192,7 @@ export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engi
   try{update=await readJson(req)}catch{return json(res,400,{error:'invalid_update'})}
   let reply;
   try{
-    reply=await maxAccessReply(update)||await engineerMaxCheckout(update,{
+    reply=await maxAccessReply(update)||await engineerMarkerReply(update)||await engineerMaxCheckout(update,{
       loadSession:loadMaxSession,saveSession:saveMaxSession,
       canPay:async()=>String(process.env.PAYMENT_PROVIDER||'tbank').toLowerCase()==='tbank'&&tbankEnv()==='production'&&Boolean((await npdSessionStatus()).connected),
       createPayment:async(body,userId)=>{
@@ -202,7 +202,7 @@ export async function engineerMaxWebhook(req,res,{env=process.env,fetchImpl=engi
         if(status!==200||!data?.paymentUrl)throw new Error('max_payment_init_failed');
         return data;
       }
-    })||await engineerMarkerReply(update)||engineerMaxReply(update);
+    })||engineerMaxReply(update);
   }catch{
     console.error('max_checkout_unavailable');
     return json(res,503,{error:'max_checkout_unavailable'});
