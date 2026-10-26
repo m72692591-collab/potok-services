@@ -2,12 +2,28 @@ name: Legacy redirect V2 guard
 
 on:
   pull_request:
+    paths:
+      - "public/**"
+      - "index.html"
+      - "404.html"
+      - "robots.txt"
+      - "legacy_status.json"
+      - "scripts/validate_legacy_redirect_v2.py"
+      - "scripts/tests/test_validate_legacy_redirect_v2.py"
+      - ".github/workflows/**"
   push:
     branches:
       - main
+    paths:
+      - "public/**"
+      - "index.html"
+      - "404.html"
+      - "robots.txt"
+      - "legacy_status.json"
+      - "scripts/validate_legacy_redirect_v2.py"
+      - "scripts/tests/test_validate_legacy_redirect_v2.py"
+      - ".github/workflows/**"
   workflow_dispatch:
-  schedule:
-    - cron: "29 3 * * *"
 
 permissions:
   contents: read
@@ -65,4 +81,4 @@ jobs:
           name: legacy-redirect-static-${{ github.run_id }}
           path: legacy-redirect-evidence
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 7
